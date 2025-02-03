@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -13,17 +12,8 @@ namespace Telegram.Bot.Tests.Integ.Interactive;
 [Collection(Constants.TestCollections.CallbackQuery)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class CallbackQueryTests
+public class CallbackQueryTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly TestsFixture _fixture;
-
-    public CallbackQueryTests(TestsFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     [OrderedFact("Should receive and answer callback query result with a notification")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.AnswerCallbackQuery)]
@@ -31,8 +21,8 @@ public class CallbackQueryTests
     {
         string callbackQueryData = 'a' + new Random().Next(5_000).ToString();
 
-        Message message = await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat.Id,
+        Message message = await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat.Id,
             text: "Please click on *OK* button.",
             parseMode: ParseMode.Markdown,
             replyMarkup: new InlineKeyboardMarkup(new[]
@@ -41,10 +31,10 @@ public class CallbackQueryTests
             })
         );
 
-        Update responseUpdate = await _fixture.UpdateReceiver.GetCallbackQueryUpdateAsync(message.MessageId);
+        Update responseUpdate = await Fixture.UpdateReceiver.GetCallbackQueryUpdateAsync(message.Id);
         CallbackQuery callbackQuery = responseUpdate.CallbackQuery!;
 
-        await BotClient.AnswerCallbackQueryAsync(
+        await BotClient.AnswerCallbackQuery(
             callbackQueryId: callbackQuery!.Id,
             text: "You clicked on OK"
         );
@@ -54,13 +44,10 @@ public class CallbackQueryTests
         Assert.NotEmpty(callbackQuery.ChatInstance);
         Assert.Null(callbackQuery.InlineMessageId);
         Assert.Null(callbackQuery.GameShortName);
-        Assert.False(callbackQuery.IsGameQuery);
         Assert.False(callbackQuery.From.IsBot);
         Assert.NotNull(callbackQuery.From.Username);
         Assert.NotEmpty(callbackQuery.From.Username);
-        Assert.True(JToken.DeepEquals(
-            JToken.FromObject(message), JToken.FromObject(callbackQuery.Message)
-        ));
+        Asserts.JsonEquals(message, callbackQuery.Message);
     }
 
     [OrderedFact("Should receive and answer callback query result with an alert")]
@@ -70,8 +57,8 @@ public class CallbackQueryTests
     {
         string callbackQueryData = $"b{new Random().Next(5_000)}";
 
-        Message message = await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat.Id,
+        Message message = await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat.Id,
             text: "Please click on *Notify* button.",
             parseMode: ParseMode.Markdown,
             replyMarkup: new InlineKeyboardMarkup(
@@ -79,10 +66,10 @@ public class CallbackQueryTests
             )
         );
 
-        Update responseUpdate = await _fixture.UpdateReceiver.GetCallbackQueryUpdateAsync(message.MessageId);
+        Update responseUpdate = await Fixture.UpdateReceiver.GetCallbackQueryUpdateAsync(message.Id);
         CallbackQuery callbackQuery = responseUpdate.CallbackQuery!;
 
-        await BotClient.AnswerCallbackQueryAsync(
+        await BotClient.AnswerCallbackQuery(
             callbackQueryId: responseUpdate.CallbackQuery!.Id,
             text: "Got it!",
             showAlert: true
@@ -93,12 +80,10 @@ public class CallbackQueryTests
         Assert.NotEmpty(callbackQuery.ChatInstance);
         Assert.Null(callbackQuery.InlineMessageId);
         Assert.Null(callbackQuery.GameShortName);
-        Assert.False(callbackQuery.IsGameQuery);
         Assert.False(callbackQuery.From.IsBot);
         Assert.NotNull(callbackQuery.From.Username);
         Assert.NotEmpty(callbackQuery.From.Username);
-        Assert.True(JToken.DeepEquals(
-            JToken.FromObject(message), JToken.FromObject(callbackQuery.Message)
-        ));
+        Assert.NotNull(callbackQuery.Message);
+        Asserts.JsonEquals(message, callbackQuery.Message);
     }
 }

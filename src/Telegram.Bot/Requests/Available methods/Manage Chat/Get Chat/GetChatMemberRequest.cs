@@ -1,35 +1,14 @@
-using Telegram.Bot.Requests.Abstractions;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to get information about a member of a chat. Returns a <see cref="ChatMember"/>
-/// object on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class GetChatMemberRequest : RequestBase<ChatMember>, IChatTargetable, IUserTargetable
+/// <summary>Use this method to get information about a member of a chat. The method is only guaranteed to work for other users if the bot is an administrator in the chat.<para>Returns: A <see cref="ChatMember"/> object on success.</para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class GetChatMemberRequest() : RequestBase<ChatMember>("getChatMember"), IChatTargetable, IUserTargetable
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
-    public ChatId ChatId { get; }
+    /// <summary>Unique identifier for the target chat or username of the target supergroup or channel (in the format <c>@channelusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId ChatId { get; set; }
 
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
-    public long UserId { get; }
-
-    /// <summary>
-    /// Initializes a new request with chatId and userId
-    /// </summary>
-    /// <param name="chatId">
-    /// Unique identifier for the target chat or username of the target supergroup or channel
-    /// (in the format <c>@channelusername</c>)
-    /// </param>
-    /// <param name="userId">Unique identifier of the target user</param>
-    public GetChatMemberRequest(ChatId chatId, long userId)
-        : base("getChatMember")
-    {
-        ChatId = chatId;
-        UserId = userId;
-    }
+    /// <summary>Unique identifier of the target user</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required long UserId { get; set; }
 }

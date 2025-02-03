@@ -1,27 +1,10 @@
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to delete a sticker from a set created by the bot. Returns <see langword="true"/> on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class DeleteStickerFromSetRequest : RequestBase<bool>
+/// <summary>Use this method to delete a sticker from a set created by the bot.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class DeleteStickerFromSetRequest() : RequestBase<bool>("deleteStickerFromSet")
 {
-    /// <summary>
-    /// <see cref="InputFileId">File identifier</see> of the sticker
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public InputFileId Sticker { get; }
-
-    /// <summary>
-    /// Initializes a new request with sticker
-    /// </summary>
-    /// <param name="sticker">
-    /// <see cref="InputFileId">File identifier</see> of the sticker
-    /// </param>
-    public DeleteStickerFromSetRequest(InputFileId sticker)
-        : base("deleteStickerFromSet")
-    {
-        Sticker = sticker;
-    }
+    /// <summary>File identifier of the sticker</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required InputFileId Sticker { get; set; }
 }

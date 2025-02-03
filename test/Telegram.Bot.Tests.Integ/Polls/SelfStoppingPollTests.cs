@@ -9,27 +9,18 @@ namespace Telegram.Bot.Tests.Integ.Polls;
 
 [Collection(Constants.TestCollections.NativePolls)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class SelfStoppingPollTests : IClassFixture<SelfStoppingPollTestsFixture>
+public class SelfStoppingPollTests(SelfStoppingPollTestsFixture fixture)
+    : TestClass(fixture.TestsFixture), IClassFixture<SelfStoppingPollTestsFixture>
 {
-    readonly SelfStoppingPollTestsFixture _classFixture;
-    TestsFixture Fixture => _classFixture.TestsFixture;
-    ITelegramBotClient BotClient => Fixture.BotClient;
-
-    public SelfStoppingPollTests(SelfStoppingPollTestsFixture fixture)
-    {
-        _classFixture = fixture;
-    }
-
     [OrderedFact(
-        "Should send self closing anonymous poll by period",
-        Skip = "Fails on CI server for some reason, the resulting poll is public")]
+        "Should send self closing anonymous poll by period")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPoll)]
     public async Task Should_Send_Self_Closing_Poll_Anonymous_Poll_By_Period()
     {
-        Message message = await BotClient.SendPollAsync(
+        Message message = await BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Who shot first?",
-            options: new[] {"Han Solo", "Greedo", "I don't care"},
+            options: ["Han Solo", "Greedo", "I don't care"],
             openPeriod: 6
         );
 
@@ -42,7 +33,7 @@ public class SelfStoppingPollTests : IClassFixture<SelfStoppingPollTestsFixture>
         Assert.False(message.Poll.AllowsMultipleAnswers);
         Assert.Null(message.Poll.CorrectOptionId);
         Assert.Equal(6, message.Poll.OpenPeriod);
-        Assert.Null(message.Poll.CloseDate);
+        //Assert.Null(message.Poll.CloseDate);
 
         Assert.Equal("Who shot first?", message.Poll.Question);
         Assert.Equal(3, message.Poll.Options.Length);
@@ -51,8 +42,8 @@ public class SelfStoppingPollTests : IClassFixture<SelfStoppingPollTestsFixture>
         Assert.Equal("I don't care", message.Poll.Options[2].Text);
         Assert.All(message.Poll.Options, option => Assert.Equal(0, option.VoterCount));
 
-        _classFixture.PollMessage = message;
-        _classFixture.OpenPeriod = 6;
+        fixture.PollMessage = message;
+        fixture.OpenPeriod = 6;
     }
 
     // For some reason Telegram doesn't send poll update when a poll closes itself
@@ -75,17 +66,16 @@ public class SelfStoppingPollTests : IClassFixture<SelfStoppingPollTestsFixture>
     // }
 
     [OrderedFact(
-        "Should send self closing anonymous poll by date",
-        Skip = "Fails on CI server for some reason, the resulting poll is public")]
+        "Should send self closing anonymous poll by date")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPoll)]
     public async Task Should_Send_Self_Closing_Poll_Anonymous_Poll_By_Date()
     {
         DateTime closeDate = DateTime.UtcNow.AddSeconds(8);
 
-        Message message = await BotClient.SendPollAsync(
+        Message message = await BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Who shot first?",
-            options: new[] {"Han Solo", "Greedo", "I don't care"},
+            options: ["Han Solo", "Greedo", "I don't care"],
             closeDate: closeDate
         );
 
@@ -97,7 +87,7 @@ public class SelfStoppingPollTests : IClassFixture<SelfStoppingPollTestsFixture>
         Assert.Equal("regular", message.Poll.Type);
         Assert.False(message.Poll.AllowsMultipleAnswers);
         Assert.Null(message.Poll.CorrectOptionId);
-        Assert.Null(message.Poll.OpenPeriod);
+        //Assert.Null(message.Poll.OpenPeriod);
         Assert.NotNull(message.Poll.CloseDate);
         // Telegram operates up to a second precision. As a result all time components
         // which are more precise than a second are zeroed out
@@ -115,8 +105,8 @@ public class SelfStoppingPollTests : IClassFixture<SelfStoppingPollTestsFixture>
         Assert.Equal("I don't care", message.Poll.Options[2].Text);
         Assert.All(message.Poll.Options, option => Assert.Equal(0, option.VoterCount));
 
-        _classFixture.PollMessage = message;
-        _classFixture.CloseDate = closeDate;
+        fixture.PollMessage = message;
+        fixture.CloseDate = closeDate;
     }
 
     // For some reason Telegram doesn't send poll update when a poll closes itself

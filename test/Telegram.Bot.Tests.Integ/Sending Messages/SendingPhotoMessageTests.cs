@@ -1,8 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Telegram.Bot.Requests;
+using Telegram.Bot.Extensions;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Tests.Integ.Framework.Fixtures;
 using Telegram.Bot.Types;
@@ -13,28 +12,17 @@ namespace Telegram.Bot.Tests.Integ.Sending_Messages;
 
 [Collection(Constants.TestCollections.SendPhotoMessage)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class SendingPhotoMessageTests : IClassFixture<EntityFixture<Message>>
+public class SendingPhotoMessageTests(TestsFixture fixture, EntityFixture<Message> classFixture)
+    : TestClass(fixture), IClassFixture<EntityFixture<Message>>
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly TestsFixture _fixture;
-
-    readonly EntityFixture<Message> _classFixture;
-
-    public SendingPhotoMessageTests(TestsFixture fixture, EntityFixture<Message> classFixture)
-    {
-        _fixture = fixture;
-        _classFixture = classFixture;
-    }
-
     [OrderedFact("Should Send photo using a file")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPhoto)]
     public async Task Should_Send_Photo_File()
     {
-        await using Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Photos.Bot);
-        Message message = await BotClient.SendPhotoAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            photo: new InputFileStream(stream),
+        await using Stream stream = File.OpenRead(Constants.PathToFile.Photos.Bot);
+        Message message = await BotClient.WithStreams(stream).SendPhoto(
+            chatId: Fixture.SupergroupChat.Id,
+            photo: InputFile.FromStream(stream),
             caption: "👆 This is a\nTelegram Bot"
         );
 
@@ -47,18 +35,18 @@ public class SendingPhotoMessageTests : IClassFixture<EntityFixture<Message>>
         Assert.All(message.Photo.Select(ps => ps.Height), h => Assert.NotEqual(default, h));
         Assert.NotNull(message.From);
 
-        _classFixture.Entity = message;
+        classFixture.Entity = message;
     }
 
     [OrderedFact("Should Send previous photo using its file_id")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPhoto)]
     public async Task Should_Send_Photo_FileId()
     {
-        string fileId = _classFixture.Entity.Photo!.First().FileId;
+        string fileId = classFixture.Entity.Photo!.First().FileId;
 
-        Message message = await BotClient.SendPhotoAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            photo: new InputFileId(fileId)
+        Message message = await BotClient.SendPhoto(
+            chatId: Fixture.SupergroupChat.Id,
+            photo: fileId
         );
 
         // Apparently file ids of photos no longer remain the same when sending them
@@ -73,7 +61,7 @@ public class SendingPhotoMessageTests : IClassFixture<EntityFixture<Message>>
     public async Task Should_Parse_Message_Caption_Entities_Into_Values()
     {
         (MessageEntityType Type, string Value)[] entityValueMappings =
-        {
+        [
             (MessageEntityType.PhoneNumber, "+38612345678"),
             (MessageEntityType.Cashtag, "$EUR"),
             (MessageEntityType.Hashtag, "#TelegramBots"),
@@ -81,13 +69,13 @@ public class SendingPhotoMessageTests : IClassFixture<EntityFixture<Message>>
             (MessageEntityType.Url, "https://github.com/TelegramBots"),
             (MessageEntityType.Email, "security@telegram.org"),
             (MessageEntityType.BotCommand, "/test"),
-            (MessageEntityType.BotCommand, $"/test@{_fixture.BotUser.Username}"),
-        };
+            (MessageEntityType.BotCommand, $"/test@{Fixture.BotUser.Username}")
+        ];
 
-        await using Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Photos.Logo);
-        Message message = await BotClient.SendPhotoAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            photo: new InputFileStream(stream),
+        await using Stream stream = File.OpenRead(Constants.PathToFile.Photos.Logo);
+        Message message = await BotClient.WithStreams(stream).SendPhoto(
+            chatId: Fixture.SupergroupChat.Id,
+            photo: InputFile.FromStream(stream),
             caption: string.Join("\n", entityValueMappings.Select(tuple => tuple.Value))
         );
 
@@ -104,17 +92,18 @@ public class SendingPhotoMessageTests : IClassFixture<EntityFixture<Message>>
     public async Task Should_Send_Photo_With_Markdown_Encoded_Caption()
     {
         (MessageEntityType Type, string EntityBody, string EncodedEntity)[] entityValueMappings =
-        {
+        [
             (MessageEntityType.Bold, "bold", "*bold*"),
             (MessageEntityType.Italic, "italic", "_italic_"),
-            (MessageEntityType.TextLink, "Text Link", "[Text Link](https://github.com/TelegramBots)"),
-        };
+            (MessageEntityType.TextLink, "Text Link", "[Text Link](https://github.com/TelegramBots)")
+        ];
 
-        await using Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Photos.Logo);
-        Message message = await BotClient.SendPhotoAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            photo: new InputFileStream(stream),
-            caption: string.Join("\n", entityValueMappings.Select(tuple => tuple.EncodedEntity)),
+        await using Stream stream = File.OpenRead(Constants.PathToFile.Photos.Logo);
+        var caption = string.Join("\n", entityValueMappings.Select(tuple => tuple.EncodedEntity));
+        Message message = await BotClient.WithStreams(stream).SendPhoto(
+            chatId: Fixture.SupergroupChat.Id,
+            photo: InputFile.FromStream(stream),
+            caption: caption,
             parseMode: ParseMode.Markdown
         );
 
@@ -124,22 +113,6 @@ public class SendingPhotoMessageTests : IClassFixture<EntityFixture<Message>>
             message.CaptionEntities.Select(e => e.Type)
         );
         Assert.Equal(entityValueMappings.Select(t => t.EntityBody), message.CaptionEntityValues);
-    }
-
-    [OrderedFact("Should deserialize a sendPhoto request from JSON and send it")]
-    [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPhoto)]
-    public async Task Should_Send_Deserialized_Photo_Request()
-    {
-        string json = $@"{{
-                chat_id: ""{_fixture.SupergroupChat.Id}"",
-                photo: ""https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg"",
-                caption: ""Photo request deserialized from JSON"",
-            }}";
-
-        SendPhotoRequest request = JsonConvert.DeserializeObject<SendPhotoRequest>(json);
-
-        Message message = await BotClient.MakeRequestAsync(request);
-
-        Assert.Equal(MessageType.Photo, message.Type);
+        Assert.Equal(caption, message.ToMarkdown());
     }
 }

@@ -1,37 +1,14 @@
-using Telegram.Bot.Requests.Abstractions;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this request to decline a chat join request. The bot must be an administrator in the chat for this to
-/// work and must have the <see cref="ChatPermissions.CanInviteUsers"/> administrator right.
-/// Returns <see langword="true"/> on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class DeclineChatJoinRequest : RequestBase<bool>, IChatTargetable, IUserTargetable
+/// <summary>Use this method to decline a chat join request. The bot must be an administrator in the chat for this to work and must have the <em>CanInviteUsers</em> administrator right.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class DeclineChatJoinRequest() : RequestBase<bool>("declineChatJoinRequest"), IChatTargetable, IUserTargetable
 {
-    /// <inheritdoc/>
-    [JsonProperty(Required = Required.Always)]
-    public ChatId ChatId { get; }
+    /// <summary>Unique identifier for the target chat or username of the target channel (in the format <c>@channelusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId ChatId { get; set; }
 
-    /// <summary>
-    /// Unique identifier of the target user
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public long UserId { get; }
-
-    /// <summary>
-    /// Initializes a new request with chatId and userId
-    /// </summary>
-    /// <param name="chatId">Unique identifier for the target chat or username of the target channel
-    /// (in the format <c>@channelusername</c>)
-    /// </param>
-    /// <param name="userId">Unique identifier of the target user</param>
-    public DeclineChatJoinRequest(ChatId chatId, long userId)
-        : base("declineChatJoinRequest")
-    {
-        ChatId = chatId;
-        UserId = userId;
-    }
+    /// <summary>Unique identifier of the target user</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required long UserId { get; set; }
 }

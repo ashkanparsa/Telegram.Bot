@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
@@ -7,9 +6,10 @@ using System.Text.RegularExpressions;
 
 namespace Telegram.Bot.Tests.Integ.Framework;
 
-public class TestConfiguration : IValidatableObject
+public partial class TestConfiguration : IValidatableObject
 {
-    private static readonly Regex UsernamePattern = new("[a-zA-Z0-9_]+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    [GeneratedRegex("[a-zA-Z0-9_]+", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
+    private static partial Regex UsernamePattern();
 
     [Required(ErrorMessage = "API token is not provided or is empty.")]
     [RegularExpression("[0-9]+:.+", ErrorMessage = "API is invalid.")]
@@ -18,7 +18,7 @@ public class TestConfiguration : IValidatableObject
 
     public string? AllowedUserNamesString { get; set; }
 
-    public string[] AllowedUserNames { get; set; } = Array.Empty<string>();
+    public string[] AllowedUserNames { get; set; } = [];
 
     [Required(ErrorMessage = "Supergroup ID is not provided or is empty.")]
     public long SuperGroupChatId { get; set; }
@@ -37,24 +37,26 @@ public class TestConfiguration : IValidatableObject
 
     public int DefaultRetryTimeout { get; set; } = 30;
 
+    public string ClientApiToken { get; set; } = default!;
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         foreach (var username in AllowedUserNames)
         {
-            if (!UsernamePattern.IsMatch(username))
+            if (!UsernamePattern().IsMatch(username))
             {
-                yield return new($"Username {username} is invalid", new [] { nameof(AllowedUserNames) });
+                yield return new($"Username {username} is invalid", [nameof(AllowedUserNames)]);
             }
         }
 
         if (RetryCount < 0)
         {
-            yield return new("RetryCount must be greater or equal to 0", new [] { nameof(RetryCount) });
+            yield return new("RetryCount must be greater or equal to 0", [nameof(RetryCount)]);
         }
 
         if (DefaultRetryTimeout < 0)
         {
-            yield return new("DefaultRetryTimeout must be greater or equal to 0", new [] { nameof(RetryCount) });
+            yield return new("DefaultRetryTimeout must be greater or equal to 0", [nameof(RetryCount)]);
         }
 
         yield return ValidationResult.Success!;

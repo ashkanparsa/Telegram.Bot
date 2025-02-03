@@ -11,17 +11,8 @@ namespace Telegram.Bot.Tests.Integ.Update_Messages;
 
 [Collection(Constants.TestCollections.EditMessage2)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class EditMessageContentTests2
+public class EditMessageContentTests2(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly TestsFixture _fixture;
-
-    public EditMessageContentTests2(TestsFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     [OrderedFact("Should edit a message's text")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageText)]
@@ -29,14 +20,14 @@ public class EditMessageContentTests2
     {
         const string originalMessagePrefix = "original\n";
         (MessageEntityType Type, string Value)[] entityValueMappings =
-        {
+        [
             (MessageEntityType.Bold, "<b>bold</b>"),
-            (MessageEntityType.Italic, "<i>italic</i>"),
-        };
+            (MessageEntityType.Italic, "<i>italic</i>")
+        ];
         string messageText = $"{originalMessagePrefix}{string.Join("\n", entityValueMappings.Select(tuple => tuple.Value))}";
 
-        Message originalMessage = await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat.Id,
+        Message originalMessage = await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat.Id,
             text: messageText,
             parseMode: ParseMode.Html
         );
@@ -46,16 +37,16 @@ public class EditMessageContentTests2
         const string modifiedMessagePrefix = "modified\n";
         messageText = $"{modifiedMessagePrefix}{string.Join("\n", entityValueMappings.Select(tuple => tuple.Value))}";
 
-        Message editedMessage = await BotClient.EditMessageTextAsync(
+        Message editedMessage = await BotClient.EditMessageText(
             chatId: originalMessage.Chat.Id,
-            messageId: originalMessage.MessageId,
+            messageId: originalMessage.Id,
             text: messageText,
             parseMode: ParseMode.Html
         );
 
         Assert.NotNull(editedMessage.Text);
         Assert.StartsWith(modifiedMessagePrefix, editedMessage.Text);
-        Assert.Equal(originalMessage.MessageId, editedMessage.MessageId);
+        Assert.Equal(originalMessage.Id, editedMessage.Id);
         Assert.Equal(originalMessage.Date, editedMessage.Date);
         Assert.True(originalMessage.Date < editedMessage.EditDate);
 
@@ -71,21 +62,21 @@ public class EditMessageContentTests2
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageReplyMarkup)]
     public async Task Should_Edit_Message_Markup()
     {
-        Message message = await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat.Id,
+        Message message = await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat.Id,
             text: "Inline keyboard will be updated shortly",
             replyMarkup: (InlineKeyboardMarkup)"Original markup"
         );
 
         await Task.Delay(1_000);
 
-        Message editedMessage = await BotClient.EditMessageReplyMarkupAsync(
+        Message editedMessage = await BotClient.EditMessageReplyMarkup(
             chatId: message.Chat.Id,
-            messageId: message.MessageId,
+            messageId: message.Id,
             replyMarkup: "Edited 👍"
         );
 
-        Assert.Equal(message.MessageId, editedMessage.MessageId);
+        Assert.Equal(message.Id, editedMessage.Id);
         Assert.Equal(message.Text, editedMessage.Text);
         Assert.True(message.Date < editedMessage.EditDate);
         Assert.Equal(message.Date, editedMessage.Date);
@@ -97,11 +88,11 @@ public class EditMessageContentTests2
     public async Task Should_Edit_Message_Caption()
     {
         Message originalMessage;
-        await using (Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Photos.Bot))
+        await using (Stream stream = File.OpenRead(Constants.PathToFile.Photos.Bot))
         {
-            originalMessage = await BotClient.SendPhotoAsync(
-                chatId: _fixture.SupergroupChat.Id,
-                photo: new InputFileStream(stream),
+            originalMessage = await BotClient.WithStreams(stream).SendPhoto(
+                chatId: Fixture.SupergroupChat.Id,
+                photo: InputFile.FromStream(stream),
                 caption: "Message caption will be updated shortly"
             );
         }
@@ -109,23 +100,23 @@ public class EditMessageContentTests2
         await Task.Delay(1_000);
 
         const string captionPrefix = "Modified caption";
-        (MessageEntityType Type, string Value) captionEntity = (MessageEntityType.Italic, "_with Markdown_");
-        string caption = $"{captionPrefix} {captionEntity.Value}";
+        (MessageEntityType Type, string Value) = (MessageEntityType.Italic, "_with Markdown_");
+        string caption = $"{captionPrefix} {Value}";
 
-        Message editedMessage = await BotClient.EditMessageCaptionAsync(
+        Message editedMessage = await BotClient.EditMessageCaption(
             chatId: originalMessage.Chat.Id,
-            messageId: originalMessage.MessageId,
+            messageId: originalMessage.Id,
             caption: caption,
             parseMode: ParseMode.Markdown
         );
 
-        Assert.Equal(originalMessage.MessageId, editedMessage.MessageId);
+        Assert.Equal(originalMessage.Id, editedMessage.Id);
         Assert.True(originalMessage.Date < editedMessage.EditDate);
         Assert.Equal(originalMessage.Date, editedMessage.Date);
         Assert.NotNull(editedMessage.Caption);
         Assert.StartsWith(captionPrefix, editedMessage.Caption);
 
         Assert.NotNull(editedMessage.CaptionEntities);
-        Assert.Equal(editedMessage.CaptionEntities.Single().Type, captionEntity.Type);
+        Assert.Equal(editedMessage.CaptionEntities.Single().Type, Type);
     }
 }

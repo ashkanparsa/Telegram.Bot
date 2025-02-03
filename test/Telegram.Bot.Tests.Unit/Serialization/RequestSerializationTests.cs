@@ -1,6 +1,3 @@
-using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Telegram.Bot.Requests;
@@ -17,9 +14,11 @@ public class RequestSerializationTests
         HttpContent deleteWebhookContent = deleteWebhookRequest.ToHttpContent()!;
 
         string stringContent = await deleteWebhookContent.ReadAsStringAsync();
-
-        Assert.NotNull(stringContent);
-        Assert.Contains(@"""drop_pending_updates"":true", stringContent);
+        JsonNode? root = JsonNode.Parse(stringContent);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Single(j);
+        Assert.Equal(true, (bool?)j["drop_pending_updates"]);
     }
 
     [Fact(DisplayName = "Should serialize request")]
@@ -27,45 +26,20 @@ public class RequestSerializationTests
     {
         GetUpdatesRequest request = new() { Offset = 12345 };
 
-        string serializeRequest = JsonConvert.SerializeObject(request);
+        string serializeRequest = JsonSerializer.Serialize(request, JsonBotAPI.Options);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(JsonNode.Parse(serializeRequest));
 
-        Assert.DoesNotContain(@"""MethodName""", serializeRequest);
-        Assert.DoesNotContain(@"""IsWebhookResponse""", serializeRequest);
-    }
-
-    [Fact(DisplayName = "Should properly serialize request with custom json settings")]
-    public void Should_Properly_Serialize_Request_With_Custom_Json_Settings()
-    {
-        GetUpdatesRequest request = new() { Offset = 12345 };
-
-        JsonSerializerSettings settings = new()
-        {
-            NullValueHandling = NullValueHandling.Include,
-            ContractResolver = new CamelCasePropertyNamesContractResolver
-            {
-                IgnoreSerializableAttribute = true,
-                IgnoreShouldSerializeMembers = true
-            },
-            DateFormatHandling = DateFormatHandling.IsoDateFormat,
-            DateTimeZoneHandling = DateTimeZoneHandling.Unspecified
-        };
-
-        string serializeRequest = JsonConvert.SerializeObject(request, settings);
-
-        Assert.DoesNotContain(@"""MethodName""", serializeRequest);
-        Assert.DoesNotContain(@"""method_name""", serializeRequest);
-        Assert.DoesNotContain(@"""IsWebhookResponse""", serializeRequest);
-        Assert.DoesNotContain(@"""is_webhook_response""", serializeRequest);
-        Assert.Contains(@"""offset"":12345", serializeRequest);
-        Assert.DoesNotContain(@"""allowed_updates""", serializeRequest);
+        Assert.Single(j);
+        Assert.Equal(12345, (long?)j["offset"]);
     }
 
     [Fact(DisplayName = "Should serialize createChatInviteLink request")]
     public async Task Should_Serialize_CreateChatInviteLink_Request()
     {
         DateTime expireDate = new(2022, 1, 8, 10, 33, 45, DateTimeKind.Utc);
-        CreateChatInviteLinkRequest createChatInviteLinkRequest = new(chatId: 1_000_000)
+        CreateChatInviteLinkRequest createChatInviteLinkRequest = new()
         {
+            ChatId = 1_000_000,
             ExpireDate = expireDate,
             CreatesJoinRequest = true,
             MemberLimit = 123,
@@ -75,11 +49,80 @@ public class RequestSerializationTests
         HttpContent createChatInviteLinkContent = createChatInviteLinkRequest.ToHttpContent()!;
 
         string stringContent = await createChatInviteLinkContent.ReadAsStringAsync();
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(JsonNode.Parse(stringContent));
 
-        Assert.Contains(@"""expire_date"":1641638025", stringContent);
-        Assert.Contains(@"""chat_id"":1000000", stringContent);
-        Assert.Contains(@"""name"":""Test link name""", stringContent);
-        Assert.Contains(@"""member_limit"":123", stringContent);
-        Assert.Contains(@"""creates_join_request"":true", stringContent);
+        Assert.Equal(5, j.Count);
+        Assert.Equal(1641638025, (long?)j["expire_date"]);
+        Assert.Equal(1000000, (long?)j["chat_id"]);
+        Assert.Equal("Test link name", (string?)j["name"]);
+        Assert.Equal(123, (long?)j["member_limit"]);
+        Assert.Equal(true, (bool?)j["creates_join_request"]);
+    }
+
+    [Fact(DisplayName = "Should build and compare sendPhotoRequest request")]
+    public async Task Should_Build_Compare_SendPhotoRequest()
+    {
+        string json =
+            $$"""
+            {
+                "chat_id": "1234567",
+                "photo": "https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg",
+                "caption": "Photo request deserialized from JSON"
+            }
+            """;
+        SendPhotoRequest? request = JsonSerializer.Deserialize<SendPhotoRequest>(json, JsonBotAPI.Options);
+
+        var bot = new Polling.MockTelegramBotClient();
+        var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            () => bot.SendPhoto(
+                1234567,
+                "https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg",
+                caption: "Photo request deserialized from JSON"
+            ));
+        var sentRequest = Assert.IsType<SendPhotoRequest>(ex.Data["request"]);
+
+        //TODO Assert.Equivalent(request, sentRequest, true); // needs xunit 2.8.2
+        Assert.Equal(JsonSerializer.Serialize(request), JsonSerializer.Serialize(sentRequest));
+    }
+
+    [Fact(DisplayName = "Should build and compare sendVenueRequest request")]
+    public async Task Should_Build_Compare_SendVenueRequest()
+    {
+        string json =
+            $$"""
+            {
+                "chat_id": "2345678",
+                "latitude": 48.204296,
+                "longitude": 16.365514,
+                "title": "Burggarten",
+                "address": "Opernring",
+                "foursquare_id": "4b7ff7c3f964a5208d4730e3",
+                "foursquare_type": "parks_outdoors/park"
+            }
+            """;
+        SendVenueRequest request = JsonSerializer.Deserialize<SendVenueRequest>(json, JsonBotAPI.Options)!;
+        Assert.Equal("sendVenue", request.MethodName);
+        Assert.Equal("Burggarten", request.Title);
+        Assert.Equal("Opernring", request.Address);
+        Assert.Equal("4b7ff7c3f964a5208d4730e3", request.FoursquareId);
+        Assert.Equal("parks_outdoors/park", request.FoursquareType);
+        Assert.InRange(request.Latitude, 48.204296 - 0.001f, 48.204296 + 0.001f);
+        Assert.InRange(request.Longitude, 16.365514 - 0.001f, 16.365514 + 0.001f);
+
+        var bot = new Polling.MockTelegramBotClient();
+        var ex = await Assert.ThrowsAsync<NotSupportedException>(
+            () => bot.SendVenue(
+                chatId: 2345678,
+                latitude: 48.204296,
+                longitude: 16.365514,
+                title: "Burggarten",
+                address: "Opernring",
+                foursquareId: "4b7ff7c3f964a5208d4730e3",
+                foursquareType: "parks_outdoors/park"
+            ));
+        var sentRequest = Assert.IsType<SendVenueRequest>(ex.Data["request"]);
+
+        //TODO Assert.Equivalent(request, sentRequest, true); // needs xunit 2.8.2
+        Assert.Equal(JsonSerializer.Serialize(request), JsonSerializer.Serialize(sentRequest));
     }
 }

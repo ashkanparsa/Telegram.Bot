@@ -1,24 +1,13 @@
-using static Telegram.Bot.Types.Enums.Emoji;
-
 namespace Telegram.Bot.Types;
 
-/// <summary>
-/// This object represents a dice with random value
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class Dice
+/// <summary>This object represents an animated emoji that displays a random value.</summary>
+public partial class Dice
 {
-    /// <summary>
-    /// Emoji on which the dice throw animation is based
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Emoji on which the dice throw animation is based</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string Emoji { get; set; } = default!;
-    /// <summary>
-    /// Value of the dice, 1-6 for <see cref="Telegram.Bot.Types.Enums.Emoji.Dice" /> (“🎲”),
-    /// <see cref="Darts" /> (“🎯”) and <see cref="Bowling"/> ("🎳"), 1-5 for <see cref="Basketball" /> (“🏀”) and
-    /// <see cref="Football" />("⚽"), and values 1-64 for <see cref="SlotMachine" /> ("🎰"). Defaults to
-    /// <see cref="Telegram.Bot.Types.Enums.Emoji.Dice" /> (“🎲”)
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+
+    /// <summary>Value of the dice, 1-6 for “🎲”, “🎯” and “🎳” base emoji, 1-5 for “🏀” and “⚽” base emoji, 1-64 for “🎰” base emoji</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public int Value { get; set; }
 }

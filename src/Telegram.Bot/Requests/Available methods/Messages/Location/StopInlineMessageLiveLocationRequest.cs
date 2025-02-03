@@ -1,30 +1,16 @@
-using Telegram.Bot.Types.ReplyMarkups;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to stop updating a live location message before <see cref="Types.Location.LivePeriod"/> expires.
-/// On success <see langword="true"/> is returned.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class StopInlineMessageLiveLocationRequest : RequestBase<bool>
+/// <summary>Use this method to stop updating a live location message before <em>LivePeriod</em> expires.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class StopInlineMessageLiveLocationRequest() : RequestBase<bool>("stopMessageLiveLocation"), IBusinessConnectable
 {
-    /// <inheritdoc cref="Abstractions.Documentation.InlineMessageId"/>
-    [JsonProperty(Required = Required.Always)]
-    public string InlineMessageId { get; }
+    /// <summary>Identifier of the inline message</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required string InlineMessageId { get; set; }
 
-    /// <inheritdoc cref="Abstractions.Documentation.InlineReplyMarkup"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>An object for a new <a href="https://core.telegram.org/bots/features#inline-keyboards">inline keyboard</a>.</summary>
     public InlineKeyboardMarkup? ReplyMarkup { get; set; }
 
-    /// <summary>
-    /// Initializes a new request with inlineMessageId
-    /// </summary>
-    /// <param name="inlineMessageId">Identifier of the inline message</param>
-    public StopInlineMessageLiveLocationRequest(string inlineMessageId)
-        : base("stopMessageLiveLocation")
-    {
-        InlineMessageId = inlineMessageId;
-    }
+    /// <summary>Unique identifier of the business connection on behalf of which the message to be edited was sent</summary>
+    public string? BusinessConnectionId { get; set; }
 }

@@ -1,38 +1,16 @@
-using Telegram.Bot.Requests.Abstractions;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to remove a message from the list of pinned messages in a chat. If the chat is not
-/// a private chat, the bot must be an administrator in the chat for this to work and must have the
-/// '<see cref="ChatMemberAdministrator.CanPinMessages"/>' admin right in a supergroup or
-/// '<see cref="ChatMemberAdministrator.CanEditMessages"/>' admin right in a channel.
-/// Returns <see langword="true"/> on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class UnpinChatMessageRequest : RequestBase<bool>, IChatTargetable
+/// <summary>Use this method to remove a message from the list of pinned messages in a chat. If the chat is not a private chat, the bot must be an administrator in the chat for this to work and must have the 'CanPinMessages' administrator right in a supergroup or 'CanEditMessages' administrator right in a channel.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class UnpinChatMessageRequest() : RequestBase<bool>("unpinChatMessage"), IChatTargetable, IBusinessConnectable
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
-    public ChatId ChatId { get; }
+    /// <summary>Unique identifier for the target chat or username of the target channel (in the format <c>@channelusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId ChatId { get; set; }
 
-    /// <summary>
-    /// Identifier of a message to unpin. If not specified, the most recent pinned message
-    /// (by sending date) will be unpinned.
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Identifier of the message to unpin. Required if <see cref="BusinessConnectionId">BusinessConnectionId</see> is specified. If not specified, the most recent pinned message (by sending date) will be unpinned.</summary>
     public int? MessageId { get; set; }
 
-    /// <summary>
-    /// Initializes a new request with chatId
-    /// </summary>
-    /// <param name="chatId">Unique identifier for the target chat or username of the target channel
-    /// (in the format <c>@channelusername</c>)
-    /// </param>
-    public UnpinChatMessageRequest(ChatId chatId)
-        : base("unpinChatMessage")
-    {
-        ChatId = chatId;
-    }
+    /// <summary>Unique identifier of the business connection on behalf of which the message will be unpinned</summary>
+    public string? BusinessConnectionId { get; set; }
 }

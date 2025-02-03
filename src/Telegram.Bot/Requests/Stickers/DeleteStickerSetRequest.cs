@@ -1,27 +1,10 @@
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to delete a sticker set that was created by the bot.
-/// Returns <see langword="true"/> on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]public class DeleteStickerSetRequest : RequestBase<bool>
+/// <summary>Use this method to delete a sticker set that was created by the bot.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class DeleteStickerSetRequest() : RequestBase<bool>("deleteStickerSet")
 {
-    //
-    /// <summary>
-    /// Sticker set name
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public string Name { get; }
-
-    /// <summary>
-    /// Initializes a new request with name
-    /// </summary>
-    /// <param name="name">
-    /// Sticker set name
-    /// </param>
-    public DeleteStickerSetRequest(string name)
-        : base("deleteStickerSet")
-    {
-        Name = name;
-    }
+    /// <summary>Sticker set name</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required string Name { get; set; }
 }

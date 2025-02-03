@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
@@ -10,19 +9,22 @@ public class MenuButtonSerializationTests
     [Fact]
     public void Should_Deserialize_Menu_Button_Web_App()
     {
-        var button = new
+        // language=JSON
+        const string button = """
         {
-            type = MenuButtonType.WebApp,
-            text = "Test text",
-            web_app = new { url = "https://example.com/link/to/web/app" }
-        };
+            "type": "web_app",
+            "text": "Test text",
+            "web_app": {
+                "url": "https://example.com/link/to/web/app"
+            }
+        }
+        """;
 
-        string menuButtonJson = JsonConvert.SerializeObject(button, Formatting.Indented);
-        MenuButton? menuButton = JsonConvert.DeserializeObject<MenuButton>(menuButtonJson);
+        MenuButton? menuButton = JsonSerializer.Deserialize<MenuButton>(button, JsonBotAPI.Options);
 
-        MenuButtonWebApp webAppButton = Assert.IsType<MenuButtonWebApp>(menuButton);
+        MenuButtonWebApp webAppButton = Assert.IsAssignableFrom<MenuButtonWebApp>(menuButton);
 
-        Assert.Equal(MenuButtonType.WebApp, menuButton.Type);
+        Assert.Equal(MenuButtonType.WebApp, menuButton!.Type);
         Assert.NotNull(webAppButton.Text);
         Assert.Equal("Test text", webAppButton.Text);
         Assert.NotNull(webAppButton.WebApp);
@@ -33,17 +35,27 @@ public class MenuButtonSerializationTests
     [Fact]
     public void Should_Serialize_Menu_Button_Web_App()
     {
-        MenuButtonWebApp webAppButton = new()
+        MenuButton menuButton = new MenuButtonWebApp()
         {
             WebApp = new(url: "https://example.com/link/to/web/app"),
             Text = "Test text"
         };
 
-        string webAppButtonJson = JsonConvert.SerializeObject(webAppButton);
-        Assert.Contains(@"""type"":""web_app""", webAppButtonJson);
-        Assert.Contains(@"""text"":""Test text""", webAppButtonJson);
-        Assert.Contains(@"""web_app"":{", webAppButtonJson);
-        Assert.Contains(@"""url"":""https://example.com/link/to/web/app""", webAppButtonJson);
+        string webAppButtonJson = JsonSerializer.Serialize(menuButton, JsonBotAPI.Options);
+
+        JsonNode? root = JsonNode.Parse(webAppButtonJson);
+        Assert.NotNull(root);
+
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Equal(3, j.Count);
+
+        Assert.Equal("web_app", (string?)j["type"]);
+        Assert.Equal("Test text", (string?)j["text"]);
+
+        JsonObject? jWebApp = j["web_app"]?.AsObject();
+        Assert.NotNull(jWebApp);
+        Assert.Single(jWebApp);
+        Assert.Equal("https://example.com/link/to/web/app", (string?)jWebApp["url"]);
     }
 
     [Fact]
@@ -51,21 +63,26 @@ public class MenuButtonSerializationTests
     {
         var button = new { type = MenuButtonType.Default, };
 
-        string menuButtonJson = JsonConvert.SerializeObject(button, Formatting.Indented);
-        MenuButton? menuButton = JsonConvert.DeserializeObject<MenuButton>(menuButtonJson);
+        string menuButtonJson = JsonSerializer.Serialize(button, JsonBotAPI.Options);
+        MenuButton? menuButton = JsonSerializer.Deserialize<MenuButton>(menuButtonJson, JsonBotAPI.Options);
 
         Assert.NotNull(menuButton);
         Assert.Equal(MenuButtonType.Default, menuButton.Type);
-        Assert.IsType<MenuButtonDefault>(menuButton);
+        Assert.IsAssignableFrom<MenuButtonDefault>(menuButton);
     }
 
     [Fact]
     public void Should_Serialize_Menu_Button_Default()
     {
-        MenuButtonDefault menuButton = new();
+        MenuButton menuButton = new MenuButtonDefault();
 
-        string menuButtonJson = JsonConvert.SerializeObject(menuButton);
-        Assert.Contains(@"""type"":""default""", menuButtonJson);
+        string menuButtonJson = JsonSerializer.Serialize(menuButton, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(menuButtonJson);
+        Assert.NotNull(root);
+
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Single(j);
+        Assert.Equal("default", (string?)j["type"]);
     }
 
     [Fact]
@@ -73,20 +90,26 @@ public class MenuButtonSerializationTests
     {
         var button = new { type = MenuButtonType.Commands, };
 
-        string menuButtonJson = JsonConvert.SerializeObject(button, Formatting.Indented);
-        MenuButton? menuButton = JsonConvert.DeserializeObject<MenuButton>(menuButtonJson);
+        string menuButtonJson = JsonSerializer.Serialize(button, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(menuButtonJson);
+        Assert.NotNull(root);
 
-        Assert.NotNull(menuButton);
-        Assert.Equal(MenuButtonType.Commands, menuButton.Type);
-        Assert.IsType<MenuButtonCommands>(menuButton);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Single(j);
+        Assert.Equal("commands", (string?)j["type"]);
     }
 
     [Fact]
     public void Should_Serialize_Menu_Button_Commands()
     {
-        MenuButtonCommands menuButton = new();
+        MenuButton menuButton = new MenuButtonCommands();
 
-        string menuButtonJson = JsonConvert.SerializeObject(menuButton);
-        Assert.Contains(@"""type"":""commands""", menuButtonJson);
+        string menuButtonJson = JsonSerializer.Serialize(menuButton, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(menuButtonJson);
+        Assert.NotNull(root);
+
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Single(j);
+        Assert.Equal("commands", (string?)j["type"]);
     }
 }

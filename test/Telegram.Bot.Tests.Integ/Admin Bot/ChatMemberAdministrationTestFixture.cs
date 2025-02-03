@@ -9,22 +9,20 @@ namespace Telegram.Bot.Tests.Integ.Admin_Bot;
 public class ChatMemberAdministrationTestFixture(TestsFixture testsFixture)
     : IAsyncLifetime
 {
-    readonly TestsFixture _testsFixture = testsFixture;
-
-    public Chat RegularMemberChat { get; private set; }
+    public ChatFullInfo RegularMemberChat { get; private set; }
     public long RegularMemberUserId { get; private set; }
     public string RegularMemberUserName { get; private set; }
     public string GroupInviteLink { get; set; }
     public ChatInviteLink ChatInviteLink { get; set; }
     public ChatJoinRequest ChatJoinRequest { get; set; }
 
-    static async Task<Chat> GetChat(TestsFixture testsFixture, string collectionName)
+    static async Task<ChatFullInfo> GetChat(TestsFixture testsFixture, string collectionName)
     {
-        Chat chat;
+        ChatFullInfo chat;
 
         if (testsFixture.Configuration.RegularGroupMemberId is {} userId)
         {
-            chat = await testsFixture.BotClient.GetChatAsync(userId);
+            chat = await testsFixture.BotClient.GetChat(userId);
         }
         else
         {
@@ -45,16 +43,16 @@ public class ChatMemberAdministrationTestFixture(TestsFixture testsFixture)
             $"[{chat.FirstName}](tg://user?id={chat.Id}) doesn't have a username.\n" +
             "❎ Failing tests...");
 
-        throw new ArgumentNullException(nameof(chat.Username), "Chat member doesn't have a username");
+        throw new InvalidOperationException("Chat member doesn't have a username");
     }
 
     public async Task InitializeAsync()
     {
         const string collectionName = Constants.TestCollections.ChatMemberAdministration;
 
-        RegularMemberChat = await GetChat(_testsFixture, collectionName);
+        RegularMemberChat = await GetChat(testsFixture, collectionName);
 
-        await _testsFixture.SendTestCollectionNotificationAsync(
+        await testsFixture.SendTestCollectionNotificationAsync(
             collectionName,
             $"Chosen regular member is @{RegularMemberChat.GetSafeUsername()}"
         );
@@ -62,13 +60,13 @@ public class ChatMemberAdministrationTestFixture(TestsFixture testsFixture)
         RegularMemberUserId = RegularMemberChat.Id;
         RegularMemberUserName = RegularMemberChat.Username;
         // Updates from regular user will be received
-        _testsFixture.UpdateReceiver.AllowedUsernames.Add(RegularMemberUserName);
+        testsFixture.UpdateReceiver.AllowedUsernames.Add(RegularMemberUserName);
     }
 
     public Task DisposeAsync()
     {
         // Remove regular user from AllowedUserNames
-        _testsFixture.UpdateReceiver.AllowedUsernames.Remove(RegularMemberUserName);
+        testsFixture.UpdateReceiver.AllowedUsernames.Remove(RegularMemberUserName);
         return Task.CompletedTask;
     }
 }

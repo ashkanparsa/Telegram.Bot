@@ -1,66 +1,27 @@
-using Telegram.Bot.Requests.Abstractions;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to forward messages of any kind. Service messages can't be forwarded. On success, the sent <see cref="Message"/> is returned.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class ForwardMessageRequest : RequestBase<Message>, IChatTargetable
+/// <summary>Use this method to forward messages of any kind. Service messages and messages with protected content can't be forwarded.<para>Returns: The sent <see cref="Message"/> is returned.</para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class ForwardMessageRequest() : RequestBase<Message>("forwardMessage"), IChatTargetable
 {
-    /// <summary>
-    /// Unique identifier for the target chat or username of the target channel
-    /// (in the format <c>@channelusername</c>)
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public ChatId ChatId { get; }
+    /// <summary>Unique identifier for the target chat or username of the target channel (in the format <c>@channelusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId ChatId { get; set; }
 
-    /// <summary>
-    /// Unique identifier for the target message thread (topic) of the forum; for forum supergroups only
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Unique identifier for the chat where the original message was sent (or channel username in the format <c>@channelusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId FromChatId { get; set; }
+
+    /// <summary>Message identifier in the chat specified in <see cref="FromChatId">FromChatId</see></summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required int MessageId { get; set; }
+
+    /// <summary>Unique identifier for the target message thread (topic) of the forum; for forum supergroups only</summary>
     public int? MessageThreadId { get; set; }
 
-    /// <summary>
-    /// Unique identifier for the chat where the original message was sent
-    /// (or channel username in the format <c>@channelusername</c>)
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public ChatId FromChatId { get; }
+    /// <summary>Sends the message <a href="https://telegram.org/blog/channels-2-0#silent-messages">silently</a>. Users will receive a notification with no sound.</summary>
+    public bool DisableNotification { get; set; }
 
-    /// <summary>
-    /// Message identifier in the chat specified in <see cref="FromChatId"/>
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public int MessageId { get; }
-
-    /// <inheritdoc cref="Abstractions.Documentation.DisableNotification"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-    public bool? DisableNotification { get; set; }
-
-    /// <inheritdoc cref="Abstractions.Documentation.ProtectContent"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-    public bool? ProtectContent { get; set; }
-
-    /// <summary>
-    /// Initializes a new request with chatId, fromChatId and messageId
-    /// </summary>
-    /// <param name="chatId">Unique identifier for the target chat or username of the target channel
-    /// (in the format <c>@channelusername</c>)
-    /// </param>
-    /// <param name="fromChatId">
-    /// Unique identifier for the chat where the original message was sent
-    /// (or channel username in the format <c>@channelusername</c>)
-    /// </param>
-    /// <param name="messageId">
-    /// Message identifier in the chat specified in <see cref="FromChatId"/>
-    /// </param>
-    public ForwardMessageRequest(ChatId chatId, ChatId fromChatId, int messageId)
-        : base("forwardMessage")
-    {
-        ChatId = chatId;
-        FromChatId = fromChatId;
-        MessageId = messageId;
-    }
+    /// <summary>Protects the contents of the forwarded message from forwarding and saving</summary>
+    public bool ProtectContent { get; set; }
 }

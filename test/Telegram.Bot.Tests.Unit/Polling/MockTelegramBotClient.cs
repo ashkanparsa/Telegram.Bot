@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,9 +16,10 @@ namespace Telegram.Bot.Tests.Unit.Polling;
 public class MockClientOptions
 {
     public bool HandleNegativeOffset { get; set; }
-    public string[] Messages { get; set; } = Array.Empty<string>();
+    public string[] Messages { get; set; } = [];
     public int RequestDelay { get; set; } = 10;
     public Exception? ExceptionToThrow { get; set; }
+    public CancellationToken GlobalCancelToken { get; set; }
 
 }
 
@@ -27,6 +27,7 @@ public class MockTelegramBotClient : ITelegramBotClient
 {
     readonly Queue<string[]> _messages;
 
+    public int? lastOffsetRequested = null;
     public int MessageGroupsLeft => _messages.Count;
     public MockClientOptions Options { get; }
 
@@ -44,14 +45,23 @@ public class MockTelegramBotClient : ITelegramBotClient
         _messages = new(messages.Select(message => message.Split('-').ToArray()));
     }
 
-    public async Task<TResponse> MakeRequestAsync<TResponse>(
+    public Task<TResponse> MakeRequestAsync<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        => SendRequest(request, cancellationToken);
+    public Task<TResponse> MakeRequest<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        => SendRequest(request, cancellationToken);
+    public async Task<TResponse> SendRequest<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
-        if (request is not GetUpdatesRequest getUpdatesRequest) { throw new NotImplementedException(); }
+        if (request is not GetUpdatesRequest getUpdatesRequest)
+            throw new NotSupportedException() { Data = { ["request"] = request } };
 
+        Options.GlobalCancelToken.ThrowIfCancellationRequested();
         await Task.Delay(Options.RequestDelay, cancellationToken);
 
+        if (getUpdatesRequest.Offset.HasValue && getUpdatesRequest.Offset == lastOffsetRequested && _messages.Count != 0)
+            throw new InvalidOperationException("Repeating same request.Offset is not supported");
+        lastOffsetRequested = getUpdatesRequest.Offset;
         if (Options.ExceptionToThrow is not null) { throw Options.ExceptionToThrow; }
 
         if (Options.HandleNegativeOffset && getUpdatesRequest.Offset == -1)
@@ -98,14 +108,14 @@ public class MockTelegramBotClient : ITelegramBotClient
     // ---------------
 
     public bool LocalBotServer => throw new NotImplementedException();
-    public long? BotId => throw new NotImplementedException();
+    public long BotId => throw new NotImplementedException();
     public event AsyncEventHandler<ApiRequestEventArgs>? OnMakingApiRequest;
     public event AsyncEventHandler<ApiResponseEventArgs>? OnApiResponseReceived;
-    public Task DownloadFileAsync(
+    public Task DownloadFile(
         string filePath,
         Stream destination,
         CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
-    public Task<bool> TestApiAsync(CancellationToken cancellationToken = default) =>
+    public Task<bool> TestApi(CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
 }

@@ -1,4 +1,3 @@
-﻿using Newtonsoft.Json;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
@@ -10,6 +9,7 @@ public class MessageEntityTests
     [Fact(DisplayName = "Should deserialize message entity with phone number type")]
     public void Should_Deserialize_Message_Entity_With_Phone_Number_Type()
     {
+        // language=JSON
         const string json = """
         {
             "offset": 10,
@@ -18,7 +18,7 @@ public class MessageEntityTests
         }
         """;
 
-        MessageEntity? message = JsonConvert.DeserializeObject<MessageEntity>(json);
+        MessageEntity? message = JsonSerializer.Deserialize<MessageEntity>(json, JsonBotAPI.Options);
 
         Assert.NotNull(message);
         Assert.Equal(MessageEntityType.PhoneNumber, message.Type);
@@ -34,16 +34,21 @@ public class MessageEntityTests
             Type = MessageEntityType.PhoneNumber
         };
 
-        string? json = JsonConvert.SerializeObject(messageEntity);
+        string json = JsonSerializer.Serialize(messageEntity, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(json);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
 
-        Assert.NotNull(json);
-        Assert.True(json.Length > 10);
-        Assert.Contains(@"""type"":""phone_number""", json);
+        Assert.Equal(3, j.Count);
+        Assert.Equal(10, (long?)j["length"]);
+        Assert.Equal(10, (long?)j["offset"]);
+        Assert.Equal("phone_number", (string?)j["type"]);
     }
 
     [Fact(DisplayName = "Should deserialize message entity with unknown type")]
     public void Should_Deserialize_Message_Entity_With_Unknown_Type()
     {
+        // language=JSON
         const string json = """
         {
             "offset": 10,
@@ -52,14 +57,14 @@ public class MessageEntityTests
         }
         """;
 
-        MessageEntity? message = JsonConvert.DeserializeObject<MessageEntity>(json);
+        MessageEntity? message = JsonSerializer.Deserialize<MessageEntity>(json, JsonBotAPI.Options);
 
         Assert.NotNull(message);
         Assert.Equal((MessageEntityType)0, message.Type);
     }
 
-    [Fact(DisplayName = "Should serialize message entity with unknown type")]
-    public void Should_Serialize_Message_Entity_With_Unknown_Type()
+    [Fact(DisplayName = "Should throw on serialize message entity with unknown type")]
+    public void Should_Throw_Serializing_Message_Entity_With_Unknown_Type()
     {
         MessageEntity messageEntity = new()
         {
@@ -68,10 +73,6 @@ public class MessageEntityTests
             Type = 0
         };
 
-        string? json = JsonConvert.SerializeObject(messageEntity);
-
-        Assert.NotNull(json);
-        Assert.True(json.Length > 10);
-        Assert.Contains(@"""type"":""unknown""", json);
+        Assert.Throws<JsonException>(() => JsonSerializer.Serialize(messageEntity, JsonBotAPI.Options));
     }
 }

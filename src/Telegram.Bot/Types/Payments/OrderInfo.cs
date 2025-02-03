@@ -1,32 +1,17 @@
 namespace Telegram.Bot.Types.Payments;
 
-/// <summary>
-/// This object represents information about an order.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class OrderInfo
+/// <summary>This object represents information about an order.</summary>
+public partial class OrderInfo
 {
-    /// <summary>
-    /// Optional. User name
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary><em>Optional</em>. User name</summary>
     public string? Name { get; set; }
 
-    /// <summary>
-    /// Optional. User's phone number
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary><em>Optional</em>. User's phone number</summary>
     public string? PhoneNumber { get; set; }
 
-    /// <summary>
-    /// Optional. User email
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary><em>Optional</em>. User email</summary>
     public string? Email { get; set; }
 
-    /// <summary>
-    /// Optional. User shipping address
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary><em>Optional</em>. User shipping address</summary>
     public ShippingAddress? ShippingAddress { get; set; }
 }

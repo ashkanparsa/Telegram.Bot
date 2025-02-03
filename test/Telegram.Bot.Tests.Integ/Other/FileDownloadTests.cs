@@ -1,47 +1,34 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Xunit;
 using Xunit.Abstractions;
-using File = Telegram.Bot.Types.File;
 
 namespace Telegram.Bot.Tests.Integ.Other;
 
 [Collection(Constants.TestCollections.FileDownload)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class FileDownloadTests : IClassFixture<FileDownloadTests.Fixture>
+public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.ClassFixture classFixture, ITestOutputHelper output)
+    : TestClass(fixture), IClassFixture<FileDownloadTests.ClassFixture>
 {
-    readonly ITestOutputHelper _output;
-    readonly Fixture _classFixture;
-    readonly TestsFixture _fixture;
-
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    public FileDownloadTests(TestsFixture fixture, Fixture classFixture, ITestOutputHelper output)
-    {
-        _fixture = fixture;
-        _classFixture = classFixture;
-        _output = output;
-    }
-
     [OrderedFact("Should get file info")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetFile)]
     public async Task Should_Get_File_Info()
     {
-        const int fileSize = 253736;
+        long fileSize = 253736;
 
         #region Send Document
 
         Message documentMessage;
-        await using (Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Documents.Hamlet))
+        await using (FileStream stream = File.OpenRead(Constants.PathToFile.Documents.Hamlet))
         {
-            documentMessage = await BotClient.SendDocumentAsync(
-                chatId: _fixture.SupergroupChat,
-                document: new InputFileStream(stream)
+            fileSize = stream.Length;
+            documentMessage = await BotClient.WithStreams(stream).SendDocument(
+                chatId: Fixture.SupergroupChat,
+                document: InputFile.FromStream(stream)
             );
         }
 
@@ -49,7 +36,7 @@ public class FileDownloadTests : IClassFixture<FileDownloadTests.Fixture>
 
         #endregion
 
-        File file = await BotClient.GetFileAsync(documentMessage.Document.FileId);
+        TGFile file = await BotClient.GetFile(documentMessage.Document.FileId);
 
         Assert.Equal(fileId, file.FileId);
         Assert.NotNull(file.FileSize);
@@ -57,20 +44,20 @@ public class FileDownloadTests : IClassFixture<FileDownloadTests.Fixture>
         Assert.NotNull(file.FilePath);
         Assert.NotEmpty(file.FilePath);
 
-        _classFixture.File = file;
+        classFixture.File = file;
     }
 
     [OrderedFact("Should download file using file_path and write it to disk")]
     public async Task Should_Download_Write_Using_FilePath()
     {
-        long? fileSize = _classFixture.File.FileSize;
+        long? fileSize = classFixture.File.FileSize;
 
-        string destinationFilePath = $"{Path.GetTempFileName()}.{Fixture.FileType}";
-        _output.WriteLine($@"Writing file to ""{destinationFilePath}""");
+        string destinationFilePath = $"{Path.GetTempFileName()}.{ClassFixture.FileType}";
+        output.WriteLine($@"Writing file to ""{destinationFilePath}""");
 
-        await using FileStream fileStream = System.IO.File.OpenWrite(destinationFilePath);
-        await BotClient.DownloadFileAsync(
-            filePath: _classFixture.File.FilePath!,
+        await using FileStream fileStream = File.OpenWrite(destinationFilePath);
+        await BotClient.DownloadFile(
+            filePath: classFixture.File.FilePath!,
             destination: fileStream
         );
 
@@ -81,22 +68,20 @@ public class FileDownloadTests : IClassFixture<FileDownloadTests.Fixture>
     [OrderedFact("Should download file using file_id and write it to disk")]
     public async Task Should_Download_Write_Using_FileId()
     {
-        long? fileSize = _classFixture.File.FileSize;
+        long? fileSize = classFixture.File.FileSize;
 
-        string destinationFilePath = $"{Path.GetTempFileName()}.{Fixture.FileType}";
-        _output.WriteLine($@"Writing file to ""{destinationFilePath}""");
+        string destinationFilePath = $"{Path.GetTempFileName()}.{ClassFixture.FileType}";
+        output.WriteLine($@"Writing file to ""{destinationFilePath}""");
 
-        await using FileStream fileStream = System.IO.File.OpenWrite(destinationFilePath);
-        File file = await BotClient.GetInfoAndDownloadFileAsync(
-            fileId: _classFixture.File.FileId,
+        await using FileStream fileStream = File.OpenWrite(destinationFilePath);
+        TGFile file = await BotClient.GetInfoAndDownloadFile(
+            fileId: classFixture.File.FileId,
             destination: fileStream
         );
 
         Assert.NotNull(fileSize);
         Assert.InRange(fileStream.Length, (int)fileSize - 100, (int)fileSize + 100);
-        Assert.True(JToken.DeepEquals(
-            JToken.FromObject(_classFixture.File), JToken.FromObject(file)
-        ));
+        Asserts.JsonEquals(classFixture.File, file);
     }
 
     [OrderedFact("Should throw InvalidParameterException while trying to get file using wrong file_id")]
@@ -104,7 +89,7 @@ public class FileDownloadTests : IClassFixture<FileDownloadTests.Fixture>
     public async Task Should_Throw_FileId_InvalidParameterException()
     {
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(async () =>
-            await BotClient.GetFileAsync("Invalid_File_id")
+            await BotClient.GetFile("Invalid_File_id")
         );
 
         Assert.Contains("file_id", exception.Message);
@@ -118,16 +103,16 @@ public class FileDownloadTests : IClassFixture<FileDownloadTests.Fixture>
         await Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
             // ReSharper disable once AssignNullToNotNullAttribute
-            await BotClient.DownloadFileAsync("Invalid_File_Path", content);
+            await BotClient.DownloadFile("Invalid_File_Path", content);
         });
 
         Assert.Null(content);
     }
 
-    public class Fixture
+    public class ClassFixture
     {
         public const string FileType = "pdf";
 
-        public File File { get; set; }
+        public TGFile File { get; set; }
     }
 }

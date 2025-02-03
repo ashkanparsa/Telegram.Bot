@@ -1,46 +1,28 @@
-using System.Collections.Generic;
-using Telegram.Bot.Requests.Abstractions;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to edit captions of messages. On success <see langword="true"/> is returned.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class EditInlineMessageCaptionRequest : RequestBase<bool>
+/// <summary>Use this method to edit captions of messages.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class EditInlineMessageCaptionRequest() : RequestBase<bool>("editMessageCaption"), IBusinessConnectable
 {
-    /// <inheritdoc cref="Abstractions.Documentation.InlineMessageId"/>
-    [JsonProperty(Required = Required.Always)]
-    public string InlineMessageId { get; }
+    /// <summary>Identifier of the inline message</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required string InlineMessageId { get; set; }
 
-    /// <summary>
-    /// New caption of the message, 0-1024 characters after entities parsing
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>New caption of the message, 0-1024 characters after entities parsing</summary>
     public string? Caption { get; set; }
 
-    /// <inheritdoc cref="Documentation.ParseMode"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-    public ParseMode? ParseMode { get; set; }
+    /// <summary>Mode for parsing entities in the message caption. See <a href="https://core.telegram.org/bots/api#formatting-options">formatting options</a> for more details.</summary>
+    public ParseMode ParseMode { get; set; }
 
-    /// <inheritdoc cref="Documentation.CaptionEntities"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>A list of special entities that appear in the caption, which can be specified instead of <see cref="ParseMode">ParseMode</see></summary>
     public IEnumerable<MessageEntity>? CaptionEntities { get; set; }
 
-    /// <inheritdoc cref="Documentation.ReplyMarkup"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Pass <see langword="true"/>, if the caption must be shown above the message media. Supported only for animation, photo and video messages.</summary>
+    public bool ShowCaptionAboveMedia { get; set; }
+
+    /// <summary>An object for an <a href="https://core.telegram.org/bots/features#inline-keyboards">inline keyboard</a>.</summary>
     public InlineKeyboardMarkup? ReplyMarkup { get; set; }
 
-    /// <summary>
-    /// Initializes a new request with inlineMessageId and new caption
-    /// </summary>
-    /// <param name="inlineMessageId">Identifier of the inline message</param>
-    public EditInlineMessageCaptionRequest(string inlineMessageId)
-        : base("editMessageCaption")
-    {
-        InlineMessageId = inlineMessageId;
-    }
+    /// <summary>Unique identifier of the business connection on behalf of which the message to be edited was sent</summary>
+    public string? BusinessConnectionId { get; set; }
 }

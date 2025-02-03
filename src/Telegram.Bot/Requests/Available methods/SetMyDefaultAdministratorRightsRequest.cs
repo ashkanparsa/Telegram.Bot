@@ -1,32 +1,12 @@
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to change the default administrator rights requested by the bot when it's added as an
-/// administrator to groups or channels. These rights will be suggested to users, but they are free to
-/// modify the list before adding the bot. Returns <see langword="true"/> on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class SetMyDefaultAdministratorRightsRequest : RequestBase<bool>
+/// <summary>Use this method to change the default administrator rights requested by the bot when it's added as an administrator to groups or channels. These rights will be suggested to users, but they are free to modify the list before adding the bot.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class SetMyDefaultAdministratorRightsRequest() : RequestBase<bool>("setMyDefaultAdministratorRights")
 {
-    /// <summary>
-    /// Optional. An object describing new default administrator rights. If not specified, the default administrator
-    /// rights will be cleared.
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>An object describing new default administrator rights. If not specified, the default administrator rights will be cleared.</summary>
     public ChatAdministratorRights? Rights { get; set; }
 
-    /// <summary>
-    /// Optional. Pass <see langword="true"/> to change the default administrator rights of the bot in channels. Otherwise,
-    /// the default administrator rights of the bot for groups and supergroups will be changed.
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-    public bool? ForChannels { get; set; }
-
-    /// <summary>
-    /// Initializes a new request
-    /// </summary>
-    public SetMyDefaultAdministratorRightsRequest()
-        : base("setMyDefaultAdministratorRights")
-    { }
+    /// <summary>Pass <see langword="true"/> to change the default administrator rights of the bot in channels. Otherwise, the default administrator rights of the bot for groups and supergroups will be changed.</summary>
+    public bool ForChannels { get; set; }
 }

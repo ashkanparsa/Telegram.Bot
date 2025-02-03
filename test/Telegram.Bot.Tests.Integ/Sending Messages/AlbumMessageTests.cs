@@ -11,45 +11,33 @@ namespace Telegram.Bot.Tests.Integ.Sending_Messages;
 
 [Collection(Constants.TestCollections.AlbumMessage)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
+public class AlbumMessageTests(TestsFixture fixture, EntitiesFixture<Message> classFixture)
+    : TestClass(fixture), IClassFixture<EntitiesFixture<Message>>
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly EntitiesFixture<Message> _classFixture;
-
-    readonly TestsFixture _fixture;
-
-    public AlbumMessageTests(TestsFixture testsFixture, EntitiesFixture<Message> classFixture)
-    {
-        _fixture = testsFixture;
-        _classFixture = classFixture;
-    }
-
     [OrderedFact("Should upload 2 photos with captions and send them in an album")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMediaGroup)]
     public async Task Should_Upload_2_Photos_Album()
     {
         Message[] messages;
         await using (Stream
-                     stream1 = System.IO.File.OpenRead(Constants.PathToFile.Photos.Logo),
-                     stream2 = System.IO.File.OpenRead(Constants.PathToFile.Photos.Bot)
+                     stream1 = File.OpenRead(Constants.PathToFile.Photos.Logo),
+                     stream2 = File.OpenRead(Constants.PathToFile.Photos.Bot)
                     )
         {
-            IAlbumInputMedia[] inputMedia =
-            [
-                new InputMediaPhoto(new InputFileStream(stream1, "logo.png"))
-                {
-                    Caption = "Logo"
-                },
-                new InputMediaPhoto(new InputFileStream(stream2, "bot.gif"))
-                {
-                    Caption = "Bot"
-                },
-            ];
-
-            messages = await BotClient.SendMediaGroupAsync(
-                chatId: _fixture.SupergroupChat.Id,
-                media: inputMedia,
+            messages = await BotClient.WithStreams(stream1, stream2).SendMediaGroup(
+                chatId: Fixture.SupergroupChat.Id,
+                media: [
+                    new InputMediaPhoto
+                    {
+                        Media = InputFile.FromStream(stream1, "logo.png"),
+                        Caption = "Logo",
+                    },
+                    new InputMediaPhoto
+                    {
+                        Media = InputFile.FromStream(stream2, "bot.gif"),
+                        Caption = "Bot",
+                    },
+                ],
                 disableNotification: true
             );
         }
@@ -64,7 +52,7 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
         Assert.Equal("Logo", messages[0].Caption);
         Assert.Equal("Bot", messages[1].Caption);
 
-        _classFixture.Entities = messages.ToList();
+        classFixture.Entities = [.. messages];
     }
 
     [OrderedFact("Should send an album with 3 photos using their file_id")]
@@ -72,18 +60,17 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
     public async Task Should_Send_3_Photos_Album_Using_FileId()
     {
         // Take file_id of photos uploaded in previous test case
-        string[] fileIds = _classFixture.Entities
+        string[] fileIds = classFixture.Entities
             .Select(msg => msg.Photo!.First().FileId)
             .ToArray();
 
-        Message[] messages = await BotClient.SendMediaGroupAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            media: new IAlbumInputMedia[]
-            {
-                new InputMediaPhoto(new InputFileId(fileIds[0])),
-                new InputMediaPhoto(new InputFileId(fileIds[1])),
-                new InputMediaPhoto(new InputFileId(fileIds[0])),
-            }
+        Message[] messages = await BotClient.SendMediaGroup(
+            chatId: Fixture.SupergroupChat.Id,
+            media: [
+                new InputMediaPhoto { Media = InputFile.FromFileId(fileIds[0])},
+                new InputMediaPhoto { Media = InputFile.FromFileId(fileIds[1])},
+                new InputMediaPhoto { Media = InputFile.FromFileId(fileIds[0])},
+            ]
         );
 
         Assert.Equal(3, messages.Length);
@@ -95,26 +82,25 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
     public async Task Should_Send_Photo_Album_Using_Url()
     {
         // ToDo add exception: Bad Request: failed to get HTTP URL content
-        int replyToMessageId = _classFixture.Entities.First().MessageId;
+        int replyToMessageId = classFixture.Entities.First().Id;
 
-        Message[] messages = await BotClient.SendMediaGroupAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            media: new IAlbumInputMedia[]
-            {
-                new InputMediaPhoto(new InputFileUrl("https://cdn.pixabay.com/photo/2017/06/20/19/22/fuchs-2424369_640.jpg")),
-                new InputMediaPhoto(new InputFileUrl("https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg")),
-            },
+        Message[] messages = await BotClient.SendMediaGroup(
+            chatId: Fixture.SupergroupChat.Id,
+            media: [
+                new InputMediaPhoto { Media = InputFile.FromUri("https://cdn.pixabay.com/photo/2017/06/20/19/22/fuchs-2424369_640.jpg")},
+                new InputMediaPhoto { Media = InputFile.FromUri("https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg")},
+            ],
             replyParameters: new() { MessageId = replyToMessageId }
         );
 
         Assert.Equal(2, messages.Length);
         Assert.All(messages, message => Assert.Equal(MessageType.Photo, message.Type));
         // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
-        Assert.All(messages, message =>
+        Assert.All(messages, (System.Action<Message>)(message =>
         {
             Assert.NotNull(message.ReplyToMessage);
-            Assert.Equal(replyToMessageId, message.ReplyToMessage.MessageId);
-        });
+            Assert.Equal(replyToMessageId, (int)message.ReplyToMessage.Id);
+        }));
     }
 
     [OrderedFact("Should upload 2 videos and a photo with captions and send them in an album")]
@@ -123,33 +109,33 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
     {
         Message[] messages;
         await using (Stream
-                     stream0 = System.IO.File.OpenRead(Constants.PathToFile.Videos.GoldenRatio),
-                     stream1 = System.IO.File.OpenRead(Constants.PathToFile.Videos.MoonLanding),
-                     stream2 = System.IO.File.OpenRead(Constants.PathToFile.Photos.Bot)
+                     stream0 = File.OpenRead(Constants.PathToFile.Videos.GoldenRatio),
+                     stream1 = File.OpenRead(Constants.PathToFile.Videos.MoonLanding),
+                     stream2 = File.OpenRead(Constants.PathToFile.Photos.Bot)
                     )
         {
-            IAlbumInputMedia[] inputMedia =
-            [
-                new InputMediaVideo(new InputFileStream(stream0, "GoldenRatio.mp4"))
-                {
-                    Caption = "Golden Ratio",
-                    Height = 240,
-                    Width = 240,
-                    Duration = 28,
-                },
-                new InputMediaVideo(new InputFileStream(stream1, "MoonLanding.mp4"))
-                {
-                    Caption = "Moon Landing"
-                },
-                new InputMediaPhoto(new InputFileStream(stream2, "bot.gif"))
-                {
-                    Caption = "Bot"
-                },
-            ];
-
-            messages = await BotClient.SendMediaGroupAsync(
-                chatId: _fixture.SupergroupChat.Id,
-                media: inputMedia
+            messages = await BotClient.WithStreams(stream0, stream1, stream2).SendMediaGroup(
+                chatId: Fixture.SupergroupChat.Id,
+                media: [
+                    new InputMediaVideo
+                    {
+                        Media = InputFile.FromStream(stream0, "GoldenRatio.mp4"),
+                        Caption = "Golden Ratio",
+                        Height = 240,
+                        Width = 240,
+                        Duration = 28,
+                    },
+                    new InputMediaVideo
+                    {
+                        Media = InputFile.FromStream(stream1, "MoonLanding.mp4"),
+                        Caption = "Moon Landing"
+                    },
+                    new InputMediaPhoto
+                    {
+                        Media = InputFile.FromStream(stream2, "bot.gif"),
+                        Caption = "Bot"
+                    },
+                ]
             );
         }
 
@@ -181,26 +167,26 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
     public async Task Should_Upload_2_Photos_Album_With_Markdown_Encoded_Captions()
     {
         await using Stream
-            stream1 = System.IO.File.OpenRead(Constants.PathToFile.Photos.Logo),
-            stream2 = System.IO.File.OpenRead(Constants.PathToFile.Photos.Bot);
+            stream1 = File.OpenRead(Constants.PathToFile.Photos.Logo),
+            stream2 = File.OpenRead(Constants.PathToFile.Photos.Bot);
 
-        IAlbumInputMedia[] inputMedia =
-        [
-            new InputMediaPhoto(new InputFileStream(stream1, "logo.png"))
-            {
-                Caption = "*Logo*",
-                ParseMode = ParseMode.Markdown
-            },
-            new InputMediaPhoto(new InputFileStream(stream2, "bot.gif"))
-            {
-                Caption = "_Bot_",
-                ParseMode = ParseMode.Markdown
-            },
-        ];
 
-        Message[] messages = await BotClient.SendMediaGroupAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            media: inputMedia
+        Message[] messages = await BotClient.WithStreams(stream1, stream2).SendMediaGroup(
+            chatId: Fixture.SupergroupChat.Id,
+            media: [
+                new InputMediaPhoto
+                {
+                    Media = InputFile.FromStream(stream1, "logo.png"),
+                    Caption = "__Logo__",
+                    ParseMode = ParseMode.MarkdownV2
+                },
+                new InputMediaPhoto
+                {
+                    Media = InputFile.FromStream(stream2, "bot.gif"),
+                    Caption = "_Bot_",
+                    ParseMode = ParseMode.Markdown
+                },
+            ]
         );
 
         Message message1 = messages[0];
@@ -213,7 +199,7 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
 
 
         Assert.Equal("Logo", message1.CaptionEntityValues.Single());
-        Assert.Equal(MessageEntityType.Bold, message1.CaptionEntities.Single().Type);
+        Assert.Equal(MessageEntityType.Underline, message1.CaptionEntities.Single().Type);
 
         Assert.Equal("Bot", message2.CaptionEntityValues.Single());
         Assert.Equal(MessageEntityType.Italic, message2.CaptionEntities.Single().Type);
@@ -224,22 +210,23 @@ public class AlbumMessageTests : IClassFixture<EntitiesFixture<Message>>
     public async Task Should_Video_With_Thumbnail_In_Album()
     {
         await using Stream
-            stream1 = System.IO.File.OpenRead(Constants.PathToFile.Videos.GoldenRatio),
-            stream2 = System.IO.File.OpenRead(Constants.PathToFile.Thumbnail.Video);
+            stream1 = File.OpenRead(Constants.PathToFile.Videos.GoldenRatio),
+            stream2 = File.OpenRead(Constants.PathToFile.Thumbnail.Video);
 
-        IAlbumInputMedia[] inputMedia =
-        [
-            new InputMediaVideo(new InputFileStream(stream1, "GoldenRatio.mp4"))
-            {
-                Thumbnail = new InputFileStream(stream2, "thumbnail.jpg"),
-                SupportsStreaming = true,
-            },
-            new InputMediaPhoto(new InputFileUrl("https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg")),
-        ];
-
-        Message[] messages = await BotClient.SendMediaGroupAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            media: inputMedia
+        Message[] messages = await BotClient.WithStreams(stream1, stream2).SendMediaGroup(
+            chatId: Fixture.SupergroupChat.Id,
+            media: [
+                new InputMediaVideo
+                {
+                    Media = InputFile.FromStream(stream1, "GoldenRatio.mp4"),
+                    Thumbnail = InputFile.FromStream(stream2, "thumbnail.jpg"),
+                    SupportsStreaming = true,
+                },
+                new InputMediaPhoto
+                {
+                    Media = InputFile.FromUri("https://cdn.pixabay.com/photo/2017/04/11/21/34/giraffe-2222908_640.jpg"),
+                },
+            ]
         );
 
         Assert.Equal(MessageType.Video, messages[0].Type);

@@ -1,9 +1,13 @@
 namespace Telegram.Bot.Types;
 
-/// <summary>
-/// This object represents a message about a forwarded story in the chat. Currently holds no information.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class Story
+/// <summary>This object represents a story.</summary>
+public partial class Story
 {
+    /// <summary>Chat that posted the story</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public Chat Chat { get; set; } = default!;
+
+    /// <summary>Unique identifier for the story in the chat</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public int Id { get; set; }
 }

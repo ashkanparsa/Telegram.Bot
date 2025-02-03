@@ -1,23 +1,13 @@
 namespace Telegram.Bot.Types.Enums;
 
-/// <summary>
-/// Type of the <see cref="Sticker"/>
-/// </summary>
-[JsonConverter(typeof(StickerTypeConverter))]
+/// <summary><see cref="Sticker"/>: Type of the sticker, currently one of <see cref="Regular">Regular</see>, <see cref="Mask">Mask</see>, <see cref="CustomEmoji">CustomEmoji</see>. The type of the sticker is independent from its format, which is determined by the fields <em>IsAnimated</em> and <em>IsVideo</em>.</summary>
+[JsonConverter(typeof(EnumConverter<StickerType>))]
 public enum StickerType
 {
-    /// <summary>
-    /// Regular  <see cref="Sticker"/>
-    /// </summary>
+    /// <summary>“regular” type</summary>
     Regular = 1,
-
-    /// <summary>
-    /// Mask
-    /// </summary>
+    /// <summary>“mask” type</summary>
     Mask,
-
-    /// <summary>
-    /// Custom emoji
-    /// </summary>
-    CustomEmoji
+    /// <summary>“CustomEmoji” type</summary>
+    CustomEmoji,
 }

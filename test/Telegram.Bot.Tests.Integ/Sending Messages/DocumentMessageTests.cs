@@ -9,25 +9,16 @@ namespace Telegram.Bot.Tests.Integ.Sending_Messages;
 
 [Collection(Constants.TestCollections.SendDocumentMessage)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class SendingDocumentMessageTests
+public class SendingDocumentMessageTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly TestsFixture _fixture;
-
-    public SendingDocumentMessageTests(TestsFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     [OrderedFact("Should send a pdf document with caption")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendDocument)]
     public async Task Should_Send_Pdf_Document()
     {
-        await using Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Documents.Hamlet);
-        Message message = await BotClient.SendDocumentAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            document: new InputFileStream(content: stream, fileName: "HAMLET.pdf"),
+        await using Stream stream = File.OpenRead(Constants.PathToFile.Documents.Hamlet);
+        Message message = await BotClient.WithStreams(stream).SendDocument(
+            chatId: Fixture.SupergroupChat.Id,
+            document: InputFile.FromStream(stream, "HAMLET.pdf"),
             caption: "The Tragedy of Hamlet,\nPrince of Denmark"
         );
 
@@ -48,10 +39,10 @@ public class SendingDocumentMessageTests
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendDocument)]
     public async Task Should_Send_Document_With_Farsi_Name()
     {
-        await using Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Documents.Hamlet);
-        Message message = await BotClient.SendDocumentAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            document: new InputFileStream(content: stream, fileName: "هملت.pdf"),
+        await using Stream stream = File.OpenRead(Constants.PathToFile.Documents.Hamlet);
+        Message message = await BotClient.WithStreams(stream).SendDocument(
+            chatId: Fixture.SupergroupChat.Id,
+            document: InputFile.FromStream(stream, "هملت.pdf"),
             caption: "تراژدی هملت\nشاهزاده دانمارک"
         );
 
@@ -71,13 +62,13 @@ public class SendingDocumentMessageTests
     public async Task Should_Send_Document_With_Thumb()
     {
         await using Stream
-            documentStream = System.IO.File.OpenRead(Constants.PathToFile.Documents.Hamlet),
-            thumbStream = System.IO.File.OpenRead(Constants.PathToFile.Thumbnail.TheAbilityToBreak);
+            documentStream = File.OpenRead(Constants.PathToFile.Documents.Hamlet),
+            thumbStream = File.OpenRead(Constants.PathToFile.Thumbnail.TheAbilityToBreak);
 
-        Message message = await BotClient.SendDocumentAsync(
-            chatId: _fixture.SupergroupChat,
-            document: new InputFileStream(content: documentStream, fileName: "Hamlet.pdf"),
-            thumbnail: new InputFileStream(content: thumbStream, fileName: "thumb.jpg")
+        Message message = await BotClient.WithStreams(documentStream, thumbStream).SendDocument(
+            chatId: Fixture.SupergroupChat,
+            document: InputFile.FromStream(documentStream, "Hamlet.pdf"),
+            thumbnail: InputFile.FromStream(thumbStream, "thumb.jpg")
         );
 
         Assert.NotNull(message.Document);

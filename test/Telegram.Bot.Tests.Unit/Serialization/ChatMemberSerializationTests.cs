@@ -1,5 +1,3 @@
-﻿using System;
-using Newtonsoft.Json;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
@@ -9,30 +7,30 @@ namespace Telegram.Bot.Tests.Unit.Serialization;
 public class ChatMemberSerializationTests
 {
     [Fact]
-    public void Should_Deserialize_Chat_Member_Member()
+    public void Should_Deserialize_Chat_Member_Owner()
     {
-        var creator = new
+        // language=JSON
+        const string json = """
         {
-            status = ChatMemberStatus.Creator,
-            user = new
-            {
-                id = 12345,
-                is_bot = true,
-                first_name = "First Name",
-                last_name = "Last Name",
-                username = "test_bot",
-                language_code = "en_US",
+            "user": {
+                "id": 12345,
+                "is_bot": true,
+                "first_name": "First Name",
+                "last_name": "Last Name",
+                "username": "test_bot",
+                "language_code": "en_US"
             },
-            is_anonymous = true,
-            custom_title = "custom test title"
-        };
+            "status": "creator",
+            "is_anonymous": true,
+            "custom_title": "custom test title"
+        }
+        """;
+        // Note: "status" discriminant is not always sent as first field
+        ChatMember? chatMember = JsonSerializer.Deserialize<ChatMember>(json, JsonBotAPI.Options);
 
-        string? chatMemberJson = JsonConvert.SerializeObject(creator, Formatting.Indented);
-        ChatMember? chatMember = JsonConvert.DeserializeObject<ChatMember>(chatMemberJson);
+        ChatMemberOwner owner = Assert.IsAssignableFrom<ChatMemberOwner>(chatMember);
 
-        ChatMemberOwner owner = Assert.IsType<ChatMemberOwner>(chatMember);
-
-        Assert.Equal(ChatMemberStatus.Creator, chatMember.Status);
+        Assert.Equal(ChatMemberStatus.Creator, chatMember!.Status);
         Assert.True(owner.IsAnonymous);
         Assert.Equal("custom test title", owner.CustomTitle);
         Assert.NotNull(chatMember.User);
@@ -45,9 +43,9 @@ public class ChatMemberSerializationTests
     }
 
     [Fact]
-    public void Should_Serialize_Chat_Member_Member()
+    public void Should_Serialize_Chat_Member_Owner()
     {
-        ChatMemberOwner creator = new()
+        ChatMember chatMember = new ChatMemberOwner()
         {
             User = new()
             {
@@ -62,23 +60,34 @@ public class ChatMemberSerializationTests
             CustomTitle = "Custom test title"
         };
 
-        string? chatMemberJson = JsonConvert.SerializeObject(creator);
-        Assert.Contains(@"""status"":""creator""", chatMemberJson);
-        Assert.Contains(@"""is_anonymous"":true", chatMemberJson);
-        Assert.Contains(@"""custom_title"":""Custom test title""", chatMemberJson);
-        Assert.Contains(@"""user"":{", chatMemberJson);
-        Assert.Contains(@"""id"":12345", chatMemberJson);
-        Assert.Contains(@"""is_bot"":true", chatMemberJson);
-        Assert.Contains(@"""first_name"":""First Name""", chatMemberJson);
-        Assert.Contains(@"""last_name"":""Last Name""", chatMemberJson);
-        Assert.Contains(@"""username"":""test_bot""", chatMemberJson);
-        Assert.Contains(@"""language_code"":""en_US""", chatMemberJson);
+        string chatMemberJson = JsonSerializer.Serialize(chatMember, JsonBotAPI.Options);
+
+        JsonNode? root = JsonNode.Parse(chatMemberJson);
+        Assert.NotNull(root);
+
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Equal(4, j.Count);
+        Assert.Equal("creator", (string?)j["status"]);
+        Assert.Equal(true, (bool?)j["is_anonymous"]);
+        Assert.Equal("Custom test title", (string?)j["custom_title"]);
+
+        JsonNode? userNode = j["user"];
+        Assert.NotNull(userNode);
+
+        JsonObject ju = Assert.IsAssignableFrom<JsonObject>(userNode);
+        Assert.Equal(6, ju.Count);
+        Assert.Equal(12345, (long?)ju["id"]);
+        Assert.Equal(true, (bool?)ju["is_bot"]);
+        Assert.Equal("First Name", (string?)ju["first_name"]);
+        Assert.Equal("Last Name", (string?)ju["last_name"]);
+        Assert.Equal("test_bot", (string?)ju["username"]);
+        Assert.Equal("en_US", (string?)ju["language_code"]);
     }
 
     [Fact]
     public void Should_Serialize_Chat_Member_Banned()
     {
-        ChatMemberBanned creator = new()
+        ChatMember chatMember = new ChatMemberBanned()
         {
             User = new()
             {
@@ -92,23 +101,34 @@ public class ChatMemberSerializationTests
             UntilDate = new(2021, 4, 2, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        string? chatMemberJson = JsonConvert.SerializeObject(creator);
+        string chatMemberJson = JsonSerializer.Serialize(chatMember, JsonBotAPI.Options);
 
-        Assert.Contains(@"""until_date"":1617321600", chatMemberJson);
-        Assert.Contains(@"""status"":""kicked""", chatMemberJson);
-        Assert.Contains(@"""user"":{", chatMemberJson);
-        Assert.Contains(@"""id"":12345", chatMemberJson);
-        Assert.Contains(@"""is_bot"":true", chatMemberJson);
-        Assert.Contains(@"""first_name"":""First Name""", chatMemberJson);
-        Assert.Contains(@"""last_name"":""Last Name""", chatMemberJson);
-        Assert.Contains(@"""username"":""test_bot""", chatMemberJson);
-        Assert.Contains(@"""language_code"":""en_US""", chatMemberJson);
+        JsonNode? root = JsonNode.Parse(chatMemberJson);
+        Assert.NotNull(root);
+
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+        Assert.Equal(3, j.Count);
+        Assert.Equal(1617321600, (long?)j["until_date"]);
+        Assert.Equal("kicked", (string?)j["status"]);
+        Assert.True(j.ContainsKey("user"));
+
+        JsonNode? userNode = j["user"];
+        Assert.NotNull(userNode);
+
+        JsonObject ju = Assert.IsAssignableFrom<JsonObject>(userNode);
+        Assert.Equal(6, ju.Count);
+        Assert.Equal(12345, (long?)ju["id"]);
+        Assert.Equal(true, (bool?)ju["is_bot"]);
+        Assert.Equal("Last Name", (string?)ju["last_name"]);
+        Assert.Equal("First Name", (string?)ju["first_name"]);
+        Assert.Equal("test_bot", (string?)ju["username"]);
+        Assert.Equal("en_US", (string?)ju["language_code"]);
     }
 
     [Fact]
     public void Should_Serialize_Chat_Member_Banned_2()
     {
-        ChatMemberBanned creator = new()
+        ChatMember chatMember = new ChatMemberBanned()
         {
             User = new()
             {
@@ -121,23 +141,35 @@ public class ChatMemberSerializationTests
             },
         };
 
-        string chatMemberJson = JsonConvert.SerializeObject(creator);
+        string chatMemberJson = JsonSerializer.Serialize(chatMember, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(chatMemberJson);
+        Assert.NotNull(root);
 
-        Assert.DoesNotContain(@"""until_date""", chatMemberJson);
-        Assert.Contains(@"""status"":""kicked""", chatMemberJson);
-        Assert.Contains(@"""user"":{", chatMemberJson);
-        Assert.Contains(@"""id"":12345", chatMemberJson);
-        Assert.Contains(@"""is_bot"":true", chatMemberJson);
-        Assert.Contains(@"""first_name"":""First Name""", chatMemberJson);
-        Assert.Contains(@"""last_name"":""Last Name""", chatMemberJson);
-        Assert.Contains(@"""username"":""test_bot""", chatMemberJson);
-        Assert.Contains(@"""language_code"":""en_US""", chatMemberJson);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+
+        Assert.Equal(2, j.Count);
+        Assert.False(j.ContainsKey("until_date"));
+        Assert.Equal("kicked", (string?)j["status"]);
+
+        JsonNode? userNode = j["user"];
+        Assert.NotNull(userNode);
+
+        JsonObject ju = Assert.IsAssignableFrom<JsonObject>(userNode);
+
+        Assert.Equal(6, ju.Count);
+        Assert.Equal(12345, (long?)ju["id"]);
+        Assert.Equal(true, (bool?)ju["is_bot"]);
+        Assert.Equal("First Name", (string?)ju["first_name"]);
+        Assert.Equal("Last Name", (string?)ju["last_name"]);
+        Assert.Equal("test_bot", (string?)ju["username"]);
+        Assert.Equal("en_US", (string?)ju["language_code"]);
     }
 
     [Fact]
     public void Should_Deserialize_Chat_Member_Banned()
     {
-        string json = """
+        // language=JSON
+        const string json = """
         {
             "status": "kicked",
             "until_date": 1617321600,
@@ -152,7 +184,9 @@ public class ChatMemberSerializationTests
         }
         """;
 
-        ChatMemberBanned? bannedUser = JsonConvert.DeserializeObject<ChatMemberBanned>(json);
+        ChatMember? chatMember = JsonSerializer.Deserialize<ChatMember>(json, JsonBotAPI.Options);
+
+        ChatMemberBanned bannedUser = Assert.IsAssignableFrom<ChatMemberBanned>(chatMember);
 
         Assert.NotNull(bannedUser);
         Assert.Equal(ChatMemberStatus.Kicked, bannedUser.Status);
@@ -169,7 +203,8 @@ public class ChatMemberSerializationTests
     [Fact]
     public void Should_Deserialize_Chat_Member_Banned_2()
     {
-        string json = """
+        // language=JSON
+        const string json = """
         {
             "status": "kicked",
             "until_date": 0,
@@ -184,7 +219,9 @@ public class ChatMemberSerializationTests
         }
         """;
 
-        ChatMemberBanned? bannedUser = JsonConvert.DeserializeObject<ChatMemberBanned>(json);
+        ChatMember? chatMember = JsonSerializer.Deserialize<ChatMember>(json, JsonBotAPI.Options) as ChatMemberBanned;
+
+        ChatMemberBanned bannedUser = Assert.IsAssignableFrom<ChatMemberBanned>(chatMember);
 
         Assert.NotNull(bannedUser);
         Assert.Equal(ChatMemberStatus.Kicked, bannedUser.Status);
@@ -201,7 +238,8 @@ public class ChatMemberSerializationTests
     [Fact]
     public void Should_Deserialize_Chat_Member_Banned_3()
     {
-        string json = """
+        // language=JSON
+        const string json = """
         {
             "status": "kicked",
             "user": {
@@ -215,7 +253,9 @@ public class ChatMemberSerializationTests
         }
         """;
 
-        ChatMemberBanned? bannedUser = JsonConvert.DeserializeObject<ChatMemberBanned>(json);
+        ChatMember? chatMember = JsonSerializer.Deserialize<ChatMember>(json, JsonBotAPI.Options) as ChatMemberBanned;
+
+        ChatMemberBanned bannedUser = Assert.IsAssignableFrom<ChatMemberBanned>(chatMember);
 
         Assert.NotNull(bannedUser);
         Assert.Equal(ChatMemberStatus.Kicked, bannedUser.Status);
@@ -227,5 +267,65 @@ public class ChatMemberSerializationTests
         Assert.Equal("Last Name", bannedUser.User.LastName);
         Assert.Equal("test_bot", bannedUser.User.Username);
         Assert.Equal("en_US", bannedUser.User.LanguageCode);
+    }
+
+    [Fact]
+    public void Should_Return_MessageOriginChat_Info_From_Obsolete_Forward_Properties2()
+    {
+        // language=JSON
+        const string json =
+            """
+            {
+              "update_id": 1234,
+              "chat_member": {
+                "new_chat_member": {
+                    "status": "kicked",
+                    "user": {
+                        "id": 12345,
+                        "is_bot": true,
+                        "first_name": "First Name",
+                        "last_name": "Last Name",
+                        "username": "test_bot",
+                        "language_code": "en_US"
+                    }
+                },
+                "old_chat_member": {
+                    "status": "left",
+                    "user": {
+                        "id": 12345,
+                        "is_bot": true,
+                        "first_name": "First Name",
+                        "last_name": "Last Name",
+                        "username": "test_bot",
+                        "language_code": "en_US"
+                    }
+                },
+                "from": {
+                    "id": 1234567,
+                    "is_bot": false,
+                    "first_name": "Telegram_Bots",
+                    "last_name": null,
+                    "username": "TelegramBots",
+                    "language_code": null
+                },
+                "chat": {
+                    "id": 1234567,
+                    "first_name": "Telegram_Bots",
+                    "last_name": null,
+                    "username": "TelegramBots",
+                    "type": "private"
+                },
+                "date": 1526315997
+              }
+            }
+            """;
+
+        Update? update = JsonSerializer.Deserialize<Update>(json, JsonBotAPI.Options);
+
+        Assert.NotNull(update);
+        Assert.Equal(UpdateType.ChatMember, update.Type);
+        Assert.NotNull(update.ChatMember);
+        Assert.IsAssignableFrom<ChatMemberBanned>(update.ChatMember.NewChatMember);
+        Assert.IsAssignableFrom<ChatMemberLeft>(update.ChatMember.OldChatMember);
     }
 }

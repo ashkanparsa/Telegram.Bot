@@ -1,35 +1,20 @@
-using Telegram.Bot.Converters;
-
 namespace Telegram.Bot.Types;
 
-/// <summary>
-/// This object represents a forum topic.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class ForumTopic
+/// <summary>This object represents a forum topic.</summary>
+public partial class ForumTopic
 {
-    /// <summary>
-    /// Unique identifier of the forum topic
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Unique identifier of the forum topic</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public int MessageThreadId { get; set; }
 
-    /// <summary>
-    /// Name of the topic
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Name of the topic</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string Name { get; set; } = default!;
 
-    /// <summary>
-    /// Color of the topic icon in RGB format
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    [JsonConverter(typeof(ColorConverter))]
-    public Color IconColor { get; set; }
+    /// <summary>Color of the topic icon in RGB format</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public int IconColor { get; set; }
 
-    /// <summary>
-    /// Optional. Unique identifier of the custom emoji shown as the topic icon
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary><em>Optional</em>. Unique identifier of the custom emoji shown as the topic icon</summary>
     public string? IconCustomEmojiId { get; set; }
 }

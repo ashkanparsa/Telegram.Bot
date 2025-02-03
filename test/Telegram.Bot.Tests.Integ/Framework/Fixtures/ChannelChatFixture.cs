@@ -8,15 +8,15 @@ public class ChannelChatFixture : AsyncLifetimeFixture
 {
     readonly TestsFixture _testsFixture;
 
-    public Chat ChannelChat { get; private set; }
+    public ChatFullInfo ChannelChat { get; private set; }
     public ChatId ChannelChatId { get; private set; }
 
     public ChannelChatFixture(TestsFixture testsFixture, string collectionName)
     {
         _testsFixture = testsFixture;
 
-        AddLifetime(
-            initialize: async () =>
+        AddInitializer(
+            async () =>
             {
                 _testsFixture.ChannelChat ??= await GetChat(collectionName);
                 ChannelChat = _testsFixture.ChannelChat;
@@ -31,10 +31,11 @@ public class ChannelChatFixture : AsyncLifetimeFixture
         );
     }
 
-    async Task<Chat> GetChat(string collectionName)
+    async Task<ChatFullInfo> GetChat(string collectionName)
     {
         var chatId = _testsFixture.Configuration.ChannelChatId;
-        if (chatId is not null) return await _testsFixture.BotClient.GetChatAsync(chatId.Value);
+        if (chatId is not null)
+            return await _testsFixture.BotClient.GetChat(chatId.Value);
 
         await _testsFixture.UpdateReceiver.DiscardNewUpdatesAsync();
 

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Args;
+using Telegram.Bot.Extensions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -28,11 +29,11 @@ public class TestsFixture : IDisposable
 
     public UpdateReceiver UpdateReceiver { get; private set; }
 
-    public Chat SupergroupChat { get; private set; }
+    public ChatFullInfo SupergroupChat { get; private set; }
 
-    public Chat PrivateChat { get; set; }
+    public ChatFullInfo PrivateChat { get; set; }
 
-    public Chat ChannelChat { get; set; }
+    public ChatFullInfo ChannelChat { get; set; }
 
     public RunSummary RunSummary { get; } = new();
 
@@ -52,7 +53,7 @@ public class TestsFixture : IDisposable
             await UpdateReceiver.DiscardNewUpdatesAsync(token);
             var passed = RunSummary.Total - RunSummary.Skipped - RunSummary.Failed;
 
-            await BotClient.SendTextMessageAsync(
+            await BotClient.SendMessage(
                 chatId: SupergroupChat.Id,
                 text: string.Format(
                     Constants.TestExecutionResultMessageFormat,
@@ -65,6 +66,8 @@ public class TestsFixture : IDisposable
                 cancellationToken: token
             );
         }).GetAwaiter().GetResult();
+        if (BotClient is IDisposable disposable) disposable.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public async Task<Message> SendTestInstructionsAsync(
@@ -80,7 +83,7 @@ public class TestsFixture : IDisposable
             : default;
 
         return await Ex.WithCancellation(async token =>
-            await BotClient.SendTextMessageAsync(
+            await BotClient.SendMessage(
                 chatId: chatId,
                 text: text,
                 parseMode: ParseMode.Markdown,
@@ -108,7 +111,7 @@ public class TestsFixture : IDisposable
             )
         );
 
-    public async Task<Chat> GetChatFromTesterAsync(
+    public async Task<ChatFullInfo> GetChatFromTesterAsync(
         ChatType chatType,
         CancellationToken cancellationToken = default)
     {
@@ -131,21 +134,23 @@ public class TestsFixture : IDisposable
 
         await UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
-        return chatType == ChatType.Channel
-            ? ((MessageOriginChannel)update.Message?.ForwardOrigin).Chat
-            : update.Message?.Chat;
+        var chat = (chatType == ChatType.Channel
+            ? ((MessageOriginChannel)update.Message?.ForwardOrigin)!.Chat
+            : update.Message?.Chat) ?? throw new InvalidOperationException("Couldn't find the chat from the tester.");
+        return await BotClient.GetChat(
+            chatId: chat.Id,
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<Chat> GetChatFromAdminAsync()
+    public async Task<ChatFullInfo> GetChatFromAdminAsync()
     {
-        static bool IsMatch(Update u) => u
-            is { Message.Type: MessageType.Contact }
-            or { Message.NewChatMembers.Length: > 0 }
-            or { Message.ForwardOrigin: not null };
-
         await UpdateReceiver.DiscardNewUpdatesAsync();
 
-        var update = await UpdateReceiver.GetUpdateAsync(IsMatch, updateTypes: [UpdateType.Message, UpdateType.ChatMember]);
+        var update = await UpdateReceiver.GetUpdateAsync(
+            IsMatch,
+            updateTypes: [UpdateType.Message, UpdateType.ChatMember]
+        );
 
         await UpdateReceiver.DiscardNewUpdatesAsync();
 
@@ -157,39 +162,38 @@ public class TestsFixture : IDisposable
             _ => throw new InvalidOperationException()
         };
 
-        return await BotClient.GetChatAsync(userId!);
+        return await BotClient.GetChat(userId!);
+
+        static bool IsMatch(Update u) => u
+            is { Message.Type: MessageType.Contact }
+            or { Message.NewChatMembers.Length: > 0 }
+            or { Message.ForwardOrigin: not null };
+    }
+
+    internal ITelegramBotClient CreateClient(TestConfiguration configuration, CancellationToken ct = default)
+    {
+        return new RetryTelegramBotClient(configuration, _diagnosticMessageSink, ct);
     }
 
     async Task InitAsync()
     {
         _configurationProvider = new();
-        var apiToken = Configuration.ApiToken;
-
-        BotClient = new RetryTelegramBotClient(
-            options: new(
-                retryCount: Configuration.RetryCount,
-                defaultTimeout: TimeSpan.FromSeconds(Configuration.DefaultRetryTimeout),
-                token: apiToken,
-                useTestEnvironment: false,
-                baseUrl: default
-            ),
-            diagnosticMessageSink: _diagnosticMessageSink
-        );
+        BotClient = CreateClient(Configuration);
 
         var allowedUserNames = await Ex.WithCancellation(
             async token =>
             {
-                BotUser = await BotClient.GetMeAsync(token);
-                await BotClient.DeleteWebhookAsync(cancellationToken: token);
+                BotUser = await BotClient.GetMe(token);
+                await BotClient.DeleteWebhook(cancellationToken: token);
 
                 SupergroupChat = await FindSupergroupTestChatAsync(token);
                 return await FindAllowedTesterUserNames(token);
             }
         );
 
-        UpdateReceiver = new(BotClient, allowedUserNames);
+        UpdateReceiver = new(this, allowedUserNames);
 
-        await Ex.WithCancellation(async token => await BotClient.SendTextMessageAsync(
+        await Ex.WithCancellation(async token => await BotClient.SendMessage(
             chatId: SupergroupChat.Id,
             text: $"""
                   ```
@@ -223,32 +227,32 @@ public class TestsFixture : IDisposable
             ? Constants.StartCollectionMessageFormat
             : Constants.StartTestCaseMessageFormat;
 
-        var text = string.Format(textFormat, name);
+        var text = string.Format(textFormat, Markdown.Escape(name));
 
         chatId ??= SupergroupChat.Id;
         if (instructions != default)
         {
-            text += $"\n\n{string.Format(Constants.InstructionsMessageFormat, instructions)}";
+            text += $"\n\n{string.Format(Constants.InstructionsMessageFormat, Markdown.Escape(instructions))}";
         }
 
         IReplyMarkup replyMarkup = switchInlineQuery
             ? (InlineKeyboardMarkup)InlineKeyboardButton.WithSwitchInlineQueryCurrentChat("Start inline query")
             : default;
 
-        var task = BotClient.SendTextMessageAsync(
+        var task = BotClient.SendMessage(
             chatId: chatId,
             text: text,
-            parseMode: ParseMode.Markdown,
+            parseMode: ParseMode.MarkdownV2,
             replyMarkup: replyMarkup,
             cancellationToken: cancellationToken
         );
         return task;
     }
 
-    async Task<Chat> FindSupergroupTestChatAsync(CancellationToken cancellationToken = default)
+    async Task<ChatFullInfo> FindSupergroupTestChatAsync(CancellationToken cancellationToken = default)
     {
         var supergroupChatId = Configuration.SuperGroupChatId;
-        return await BotClient.GetChatAsync(supergroupChatId, cancellationToken);
+        return await BotClient.GetChat(supergroupChatId, cancellationToken);
     }
 
     async Task<IEnumerable<string>> FindAllowedTesterUserNames(CancellationToken cancellationToken = default)
@@ -259,7 +263,7 @@ public class TestsFixture : IDisposable
         if (allowedUserNames.Length != 0) return allowedUserNames;
 
         // Assume all chat admins are allowed testers
-        var admins = await BotClient.GetChatAdministratorsAsync(SupergroupChat, cancellationToken);
+        var admins = await BotClient.GetChatAdministrators(SupergroupChat, cancellationToken);
         allowedUserNames = admins
             .Where(member => !member.User.IsBot)
             .Select(member => member.User.Username)
@@ -270,7 +274,7 @@ public class TestsFixture : IDisposable
 
 #if DEBUG
     // Disable "The variable ‘x’ is assigned but its value is never used":
-#pragma warning disable 219
+#pragma warning disable 219, IDE0059
     // ReSharper disable NotAccessedVariable
     // ReSharper disable RedundantAssignment
     async ValueTask OnMakingApiRequest(
@@ -303,7 +307,7 @@ public class TestsFixture : IDisposable
                 }
             }
 
-            multipartContent = [.. stringifiedFormContent];
+            multipartContent = [..stringifiedFormContent];
         }
         else
         {
@@ -325,7 +329,7 @@ public class TestsFixture : IDisposable
 
         /* Debugging Hint: set breakpoints with conditions here in order to investigate the HTTP response received. */
     }
-#pragma warning restore 219
+#pragma warning restore 219, IDE0059
 #endif
     static class Constants
     {
@@ -344,4 +348,10 @@ public class TestsFixture : IDisposable
             ❎ `{3} failed`
             """;
     }
+}
+
+public class TestClass(TestsFixture fixture)
+{
+	public TestsFixture Fixture = fixture;
+	public ITelegramBotClient BotClient => Fixture.BotClient;
 }

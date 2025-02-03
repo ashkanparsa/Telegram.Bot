@@ -1,26 +1,17 @@
-﻿namespace Telegram.Bot.Types.Payments;
+namespace Telegram.Bot.Types.Payments;
 
-/// <summary>
-/// This object represents one shipping option.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class ShippingOption
+/// <summary>This object represents one shipping option.</summary>
+public partial class ShippingOption
 {
-    /// <summary>
-    /// Shipping option identifier
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Shipping option identifier</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string Id { get; set; } = default!;
 
-    /// <summary>
-    /// Option title
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Option title</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string Title { get; set; } = default!;
 
-    /// <summary>
-    /// List of price portions
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>List of price portions</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public LabeledPrice[] Prices { get; set; } = default!;
 }

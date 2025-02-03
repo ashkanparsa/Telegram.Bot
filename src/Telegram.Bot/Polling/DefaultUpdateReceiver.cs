@@ -5,95 +5,65 @@ using Telegram.Bot.Requests;
 
 namespace Telegram.Bot.Polling;
 
-/// <summary>
-/// A simple <see cref="IUpdateReceiver"/>> implementation that requests new updates and handles them sequentially
-/// </summary>
+/// <summary>A simple <see cref="IUpdateReceiver"/>> implementation that requests new updates and handles them sequentially</summary>
+/// <remarks>Constructs a new <see cref="DefaultUpdateReceiver"/> with the specified <see cref="ITelegramBotClient"/> instance and optional <see cref="ReceiverOptions"/></remarks>
+/// <param name="botClient">The <see cref="ITelegramBotClient"/> used for making GetUpdates calls</param>
+/// <param name="receiverOptions">Options used to configure getUpdates requests</param>
 [PublicAPI]
-public class DefaultUpdateReceiver : IUpdateReceiver
+public class DefaultUpdateReceiver(ITelegramBotClient botClient, ReceiverOptions? receiverOptions = default) : IUpdateReceiver
 {
-    static readonly Update[] EmptyUpdates = Array.Empty<Update>();
+    private static readonly Update[] EmptyUpdates = [];
 
-    readonly ITelegramBotClient _botClient;
-    readonly ReceiverOptions? _receiverOptions;
-
-    /// <summary>
-    /// Constructs a new <see cref="DefaultUpdateReceiver"/> with the specified <see cref="ITelegramBotClient"/>>
-    /// instance and optional <see cref="ReceiverOptions"/>
-    /// </summary>
-    /// <param name="botClient">The <see cref="ITelegramBotClient"/> used for making GetUpdates calls</param>
-    /// <param name="receiverOptions">Options used to configure getUpdates requests</param>
-    public DefaultUpdateReceiver(
-        ITelegramBotClient botClient,
-        ReceiverOptions? receiverOptions = default)
-    {
-        _botClient = botClient ?? throw new ArgumentNullException(nameof(botClient));
-        _receiverOptions = receiverOptions;
-    }
-
-    /// <inheritdoc />
-    public async Task ReceiveAsync(
-        IUpdateHandler updateHandler,
-        CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public async Task ReceiveAsync(IUpdateHandler updateHandler, CancellationToken cancellationToken = default)
     {
         if (updateHandler is null) { throw new ArgumentNullException(nameof(updateHandler)); }
 
-        var allowedUpdates = _receiverOptions?.AllowedUpdates;
-        var limit = _receiverOptions?.Limit ?? default;
-        var messageOffset = _receiverOptions?.Offset ?? 0;
+        var allowedUpdates = receiverOptions?.AllowedUpdates;
+        var limit = receiverOptions?.Limit ?? 100;
+        var messageOffset = receiverOptions?.Offset ?? 0;
         var emptyUpdates = EmptyUpdates;
 
-        if (_receiverOptions?.ThrowPendingUpdates is true)
+        if (receiverOptions?.DropPendingUpdates is true)
         {
             try
             {
-                messageOffset = await _botClient.ThrowOutPendingUpdatesAsync(
-                    cancellationToken: cancellationToken
-                ).ConfigureAwait(false);
+                var updates = await botClient.GetUpdates(-1, 1, 0, [], cancellationToken).ConfigureAwait(false);
+                messageOffset = updates.Length == 0 ? 0 : updates[^1].Id + 1;
             }
             catch (OperationCanceledException)
             {
                 // ignored
             }
         }
-
+        var request = new GetUpdatesRequest
+        {
+            Limit = limit,
+            Offset = messageOffset,
+            AllowedUpdates = allowedUpdates,
+        };
         while (!cancellationToken.IsCancellationRequested)
         {
-            var timeout = (int) _botClient.Timeout.TotalSeconds;
+            request.Timeout = (int)botClient.Timeout.TotalSeconds;
+
             var updates = emptyUpdates;
             try
             {
-                var request = new GetUpdatesRequest
-                {
-                    Limit = limit,
-                    Offset = messageOffset,
-                    Timeout = timeout,
-                    AllowedUpdates = allowedUpdates,
-                };
-                updates = await _botClient.MakeRequestAsync(
-                    request: request,
-                    cancellationToken:
-                    cancellationToken
-                ).ConfigureAwait(false);
+                updates = await botClient.SendRequest(request, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
-                // Ignore
+                return;
             }
-#pragma warning disable CA1031
             catch (Exception exception)
-#pragma warning restore CA1031
             {
                 try
                 {
-                    await updateHandler.HandlePollingErrorAsync(
-                        botClient: _botClient,
-                        exception: exception,
-                        cancellationToken: cancellationToken
-                    ).ConfigureAwait(false);
+                    await updateHandler.HandleErrorAsync(botClient, exception, HandleErrorSource.PollingError, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    // ignored
+                    return;
                 }
             }
 
@@ -101,19 +71,26 @@ public class DefaultUpdateReceiver : IUpdateReceiver
             {
                 try
                 {
-                    await updateHandler.HandleUpdateAsync(
-                        botClient: _botClient,
-                        update: update,
-                        cancellationToken: cancellationToken
-                    ).ConfigureAwait(false);
-
-                    messageOffset = update.Id + 1;
+                    request.Offset = update.Id + 1;
+                    await updateHandler.HandleUpdateAsync(botClient, update, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    // ignored
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        await updateHandler.HandleErrorAsync(botClient, ex, HandleErrorSource.HandleUpdateError, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // ignored
+                    }
                 }
             }
         }
     }
 }
+

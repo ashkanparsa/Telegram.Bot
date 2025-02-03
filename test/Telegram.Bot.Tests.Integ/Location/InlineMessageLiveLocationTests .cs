@@ -12,87 +12,74 @@ namespace Telegram.Bot.Tests.Integ.Locations;
 [Collection(Constants.TestCollections.InlineMessageLiveLocation)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class InlineMessageLiveLocationTests : IClassFixture<InlineMessageLiveLocationTests.Fixture>
+public class InlineMessageLiveLocationTests(TestsFixture fixture, InlineMessageLiveLocationTests.ClassFixture classFixture)
+    : TestClass(fixture), IClassFixture<InlineMessageLiveLocationTests.ClassFixture>
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly Fixture _classFixture;
-
-    readonly TestsFixture _fixture;
-
-    public InlineMessageLiveLocationTests(TestsFixture fixture, Fixture classFixture)
-    {
-        _fixture = fixture;
-        _classFixture = classFixture;
-    }
-
     [OrderedFact("Should answer inline query with a location result")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageLiveLocation)]
     public async Task Should_Answer_Inline_Query_With_Location()
     {
-        await _fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             "Staring the inline query with this message...",
             startInlineQuery: true
         );
 
-        Update iqUpdate = await _fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
+        Update iqUpdate = await Fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
 
         string callbackQueryData = $"edit-location{new Random().Next(1_000)}";
-        Location newYork = new Location {Latitude = 40.7128f, Longitude = -74.0060f};
+        Location newYork = new() { Latitude = 40.7128f, Longitude = -74.0060f };
 
-        await BotClient.AnswerInlineQueryAsync(
+        await BotClient.AnswerInlineQuery(
             inlineQueryId: iqUpdate.InlineQuery!.Id,
             cacheTime: 0,
-            results: new[]
-            {
-                new InlineQueryResultLocation(
-                    id: "live-location",
-                    latitude: newYork.Latitude,
-                    longitude: newYork.Longitude,
-                    title: "Live Locations Test")
+            results:
+            [
+                new InlineQueryResultLocation
                 {
+                    Id = "live-location",
+                    Latitude = newYork.Latitude,
+                    Longitude = newYork.Longitude,
+                    Title = "Live Locations Test",
                     LivePeriod = 60,
-                    ReplyMarkup = InlineKeyboardButton.WithCallbackData(
-                        "Start live locations", callbackQueryData
-                    )
+                    ReplyMarkup = InlineKeyboardButton.WithCallbackData("Start live locations", callbackQueryData)
                 }
-            }
+            ]
         );
 
-        _classFixture.CallbackQueryData = callbackQueryData;
+        classFixture.CallbackQueryData = callbackQueryData;
     }
 
     [OrderedFact("Should edit live location of previously sent inline message")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageLiveLocation)]
     public async Task Should_Edit_Inline_Message_Live_Location()
     {
-        await _fixture.SendTestInstructionsAsync("Click on location message's button to edit the location");
+        await Fixture.SendTestInstructionsAsync("Click on location message's button to edit the location");
 
-        Update cqUpdate = await _fixture.UpdateReceiver
-            .GetCallbackQueryUpdateAsync(data: _classFixture.CallbackQueryData);
+        Update cqUpdate = await Fixture.UpdateReceiver
+            .GetCallbackQueryUpdateAsync(data: classFixture.CallbackQueryData);
 
-        Location beijing = new Location {Latitude = 39.9042f, Longitude = 116.4074f};
+        Location beijing = new() { Latitude = 39.9042f, Longitude = 116.4074f };
 
-        await BotClient.EditMessageLiveLocationAsync(
+        await BotClient.EditMessageLiveLocation(
             inlineMessageId: cqUpdate.CallbackQuery!.InlineMessageId!,
             latitude: beijing.Latitude,
             longitude: beijing.Longitude,
             replyMarkup: InlineKeyboardMarkup.Empty()
         );
 
-        _classFixture.InlineMessageId = cqUpdate.CallbackQuery.InlineMessageId;
+        classFixture.InlineMessageId = cqUpdate.CallbackQuery.InlineMessageId;
     }
 
     [OrderedFact("Should stop live locations of previously sent inline message")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.StopMessageLiveLocation)]
     public async Task Should_Stop_Inline_Message_Live_Location()
     {
-        await BotClient.StopMessageLiveLocationAsync(
-            inlineMessageId: _classFixture.InlineMessageId
+        await BotClient.StopMessageLiveLocation(
+            inlineMessageId: classFixture.InlineMessageId
         );
     }
 
-    public class Fixture
+    public class ClassFixture
     {
         public string InlineMessageId { get; set; }
 

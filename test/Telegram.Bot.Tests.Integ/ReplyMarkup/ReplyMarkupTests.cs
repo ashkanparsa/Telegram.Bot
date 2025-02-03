@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -9,18 +8,14 @@ namespace Telegram.Bot.Tests.Integ.ReplyMarkup;
 
 [Collection(Constants.TestCollections.ReplyMarkup)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class ReplyMarkupTests(TestsFixture testsFixture)
+public class ReplyMarkupTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    readonly TestsFixture _fixture = testsFixture;
-
     [OrderedFact("Should send a message with force reply markup")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
     public async Task Should_Force_Reply()
     {
-        await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat,
+        await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat,
             text: "Message with force_reply",
             replyMarkup: new ForceReplyMarkup()
         );
@@ -42,8 +37,25 @@ public class ReplyMarkupTests(TestsFixture testsFixture)
             ResizeKeyboard = true,
         };
 
-        await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat,
+        await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat,
+            text: "Message with 3x3 keyboard",
+            replyMarkup: replyMarkup
+        );
+    }
+
+    [OrderedFact("Should send a message multi-row keyboard reply with Add* methods")]
+    [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
+    public async Task Should_Send_MultiRow_Keyboard_WithAdd()
+    {
+        var replyMarkup = new ReplyKeyboardMarkup(true);
+        replyMarkup.AddButton("Top-Left");
+        replyMarkup.AddButtons("Top", "Top-Right");
+        replyMarkup.AddNewRow("Left", "Center", "Right");
+        replyMarkup.AddNewRow().AddButtons(["Bottom-Left", "Bottom", "Bottom-Right"]);
+
+        await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat,
             text: "Message with 3x3 keyboard",
             replyMarkup: replyMarkup
         );
@@ -53,8 +65,8 @@ public class ReplyMarkupTests(TestsFixture testsFixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
     public async Task Should_Remove_Reply_Keyboard()
     {
-        await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat,
+        await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat,
             text: "Message to remove keyboard",
             replyMarkup: new ReplyKeyboardRemove()
         );
@@ -64,25 +76,16 @@ public class ReplyMarkupTests(TestsFixture testsFixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
     public async Task Should_Send_Inline_Keyboard()
     {
-        InlineKeyboardButton[][] keyboard =
-        [
-            [
-                InlineKeyboardButton.WithUrl(
+        var replyMarkup = new InlineKeyboardMarkup()
+            .AddButton(InlineKeyboardButton.WithUrl(
                     text: "Link to Repository",
-                    url: "https://github.com/TelegramBots/Telegram.Bot"),
-            ],
-            [
-                InlineKeyboardButton.WithCallbackData(textAndCallbackData: "callback_data1"),
-                InlineKeyboardButton.WithCallbackData(text: "callback_data: a2", callbackData: "data"),
-            ],
-            [InlineKeyboardButton.WithSwitchInlineQuery(text: "switch_inline_query"),],
-            [InlineKeyboardButton.WithSwitchInlineQueryCurrentChat(text: "switch_inline_query_current_chat"),],
-        ];
+                    url: "https://github.com/TelegramBots/Telegram.Bot"))
+            .AddNewRow().AddButton("callback_data1").AddButton("callback_data: data2", "data2")
+            .AddNewRow(InlineKeyboardButton.WithSwitchInlineQuery(text: "switch_inline_query"))
+            .AddNewRow().AddButton(InlineKeyboardButton.WithSwitchInlineQueryCurrentChat(text: "switch_inline_query_current_chat"));
 
-        InlineKeyboardMarkup replyMarkup = new(keyboard);
-
-        Message sentMessage = await BotClient.SendTextMessageAsync(
-            chatId: _fixture.SupergroupChat,
+        Message sentMessage = await BotClient.SendMessage(
+            chatId: Fixture.SupergroupChat,
             text: "Message with inline keyboard markup",
             replyMarkup: replyMarkup
         );

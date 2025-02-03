@@ -1,6 +1,5 @@
 using System.Net.Http;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Telegram.Bot.Requests;
 using Xunit;
 
@@ -11,19 +10,43 @@ public class MethodNameTests
     [Fact(DisplayName = "Should serialize method name in webhook responses")]
     public void Should_Serialize_MethodName_In_Webhook_Responses()
     {
-        SendMessageRequest sendMessageRequest = new(1, "text") { IsWebhookResponse = true };
+        SendMessageRequest sendMessageRequest = new()
+        {
+            ChatId = 1,
+            Text = "text",
+            IsWebhookResponse = true
+        };
 
-        string request = JsonConvert.SerializeObject(sendMessageRequest);
-        Assert.Contains(@"""method"":""sendMessage""", request);
+        string request = JsonSerializer.Serialize(sendMessageRequest, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(request);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+
+        Assert.Equal(3, j.Count);
+        Assert.Equal(1, (long?)j["chat_id"]);
+        Assert.Equal("text", (string?)j["text"]);
+        Assert.Equal("sendMessage", (string?)j["method"]);
     }
 
     [Fact(DisplayName = "Should not serialize method name when not a webhook responses")]
     public void Should_Not_Serialize_MethodName_When_Not_In_Webhook_Responses()
     {
-        SendMessageRequest sendMessageRequest = new(1, "text") { IsWebhookResponse = false };
+        SendMessageRequest sendMessageRequest = new()
+        {
+            ChatId = 1,
+            Text = "text",
+            IsWebhookResponse = false
+        };
 
-        string request = JsonConvert.SerializeObject(sendMessageRequest);
-        Assert.DoesNotContain(@"""method"":""sendMessage""", request);
+        string request = JsonSerializer.Serialize(sendMessageRequest, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(request);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+
+        Assert.Equal(2, j.Count);
+        Assert.Equal(1, (long?)j["chat_id"]);
+        Assert.Equal("text", (string?)j["text"]);
+        Assert.False(j.ContainsKey("method"));
     }
 
     [Fact(DisplayName = "Should serialize only the method name in parameterless webhook responses")]
@@ -31,8 +54,13 @@ public class MethodNameTests
     {
         DeleteWebhookRequest deleteWebhookRequest = new() { IsWebhookResponse = true };
 
-        string request = JsonConvert.SerializeObject(deleteWebhookRequest);
-        Assert.Equal(@"{""method"":""deleteWebhook""}", request);
+        string request = JsonSerializer.Serialize(deleteWebhookRequest, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(request);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+
+        Assert.Single(j);
+        Assert.Equal("deleteWebhook", (string?)j["method"]);
     }
 
     [Fact(DisplayName = "Should serialize an empty object when not a parameterless webhook response")]
@@ -40,8 +68,12 @@ public class MethodNameTests
     {
         DeleteWebhookRequest deleteWebhookRequest = new() { IsWebhookResponse = false };
 
-        string request = JsonConvert.SerializeObject(deleteWebhookRequest);
-        Assert.Equal("{}", request);
+        string request = JsonSerializer.Serialize(deleteWebhookRequest, JsonBotAPI.Options);
+        JsonNode? root = JsonNode.Parse(request);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+
+        Assert.Empty(j);
     }
 
     [Fact(DisplayName = "Should build a HttpContent in parameterless webhook responses")]
@@ -53,18 +85,23 @@ public class MethodNameTests
         Assert.NotNull(content);
     }
 
-    [Fact(DisplayName = "Should build a StringContent with method name in parameterless webhook responses")]
-    public async Task Should_Build_StringContent_With_MethodName_In_Parameterless_Webhook_ResponseAsync()
+    [Fact(DisplayName = "Should build a json with method name in parameterless webhook responses")]
+    public async Task Should_Build_Json_With_MethodName_In_Parameterless_Webhook_ResponseAsync()
     {
         CloseRequest closeRequest = new() { IsWebhookResponse = true };
 
         HttpContent? content = closeRequest.ToHttpContent();
 
-        StringContent stringContent = Assert.IsType<StringContent>(content);
+        //StringContent stringContent = Assert.IsAssignableFrom<StringContent>(content);
         Assert.NotNull(content);
 
-        string body = await stringContent.ReadAsStringAsync();
-        Assert.Equal(@"{""method"":""close""}", body);
+        string body = await content.ReadAsStringAsync();
+        JsonNode? root = JsonNode.Parse(body);
+        Assert.NotNull(root);
+        JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
+
+        Assert.Single(j);
+        Assert.Equal("close", (string?)j["method"]);
     }
 
     [Fact(DisplayName = "Should not build an HttpContent when not a parameterless webhook responses")]

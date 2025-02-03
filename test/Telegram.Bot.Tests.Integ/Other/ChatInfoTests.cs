@@ -10,20 +10,15 @@ namespace Telegram.Bot.Tests.Integ.Other;
 
 [Collection(Constants.TestCollections.ChatInfo)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class ChatInfoTests
+public class ChatInfoTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => _fixture.BotClient;
-    readonly TestsFixture _fixture;
-
-    public ChatInfoTests(TestsFixture fixture) => _fixture = fixture;
-
     [OrderedFact("Should get supergroup chat info")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetChat)]
     public async Task Should_Get_Supergroup_Chat()
     {
-        Chat supergroupChat = _fixture.SupergroupChat;
+        ChatFullInfo supergroupChat = Fixture.SupergroupChat;
 
-        Chat chat = await BotClient.GetChatAsync(
+        ChatFullInfo chat = await BotClient.GetChat(
             chatId: supergroupChat.Id
         );
 
@@ -35,7 +30,7 @@ public class ChatInfoTests
         // Don't compare invite links, it's easy to invalidate them accidentally so the test
         // fails for no good reason
         // Assert.Equal(supergroupChat.InviteLink, chat.InviteLink);
-        Assert.Equal(supergroupChat.PinnedMessage, chat.PinnedMessage);
+        Asserts.JsonEquals(supergroupChat.PinnedMessage, chat.PinnedMessage);
         Assert.Equal(supergroupChat.StickerSetName, chat.StickerSetName);
         Assert.Equal(supergroupChat.CanSetStickerSet, chat.CanSetStickerSet);
         Assert.Null(chat.FirstName);
@@ -47,9 +42,9 @@ public class ChatInfoTests
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetChatMember)]
     public async Task Should_Get_Bot_Chat_Member()
     {
-        ChatMember memberBot = await BotClient.GetChatMemberAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            userId: _fixture.BotUser.Id
+        ChatMember memberBot = await BotClient.GetChatMember(
+            chatId: Fixture.SupergroupChat.Id,
+            userId: Fixture.BotUser.Id
         );
 
         Assert.Equal(ChatMemberStatus.Administrator, memberBot.Status);
@@ -63,28 +58,28 @@ public class ChatInfoTests
         Assert.True(administrator.CanPinMessages);
         Assert.False(administrator.CanBeEdited);
         // Channels only
-        Assert.Null(administrator.CanPostMessages);
-        Assert.Null(administrator.CanEditMessages);
+        Assert.False(administrator.CanPostMessages);
+        Assert.False(administrator.CanEditMessages);
 
-        Asserts.UsersEqual(_fixture.BotUser, memberBot.User);
+        Asserts.UsersEqual(Fixture.BotUser, memberBot.User);
     }
 
     [OrderedFact("Should get supergroup chat administrators")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetChatAdministrators)]
     public async Task Should_Get_Chat_Admins()
     {
-        ChatMember[] chatAdmins = await BotClient.GetChatAdministratorsAsync(
-            chatId: _fixture.SupergroupChat.Id
+        ChatMember[] chatAdmins = await BotClient.GetChatAdministrators(
+            chatId: Fixture.SupergroupChat.Id
         );
 
-        ChatMember memberCreator = Assert.Single(chatAdmins, _ => _.Status == ChatMemberStatus.Creator);
+        ChatMember memberCreator = Assert.Single(chatAdmins, admin => admin.Status == ChatMemberStatus.Creator);
         Assert.IsType<ChatMemberOwner>(memberCreator);
 
-        ChatMember memberBot = Assert.Single(chatAdmins, _ => _.User.IsBot);
+        ChatMember memberBot = Assert.Single(chatAdmins, admin => admin.User.IsBot);
         Debug.Assert(memberBot != null);
 
         Assert.True(2 <= chatAdmins.Length); // at least, Bot and the Creator
-        Asserts.UsersEqual(_fixture.BotUser, memberBot.User);
+        Asserts.UsersEqual(Fixture.BotUser, memberBot.User);
     }
 
     [OrderedFact("Should get private chat info")]
@@ -97,13 +92,13 @@ public class ChatInfoTests
             /* In order to have a private chat id, take the Creator of supergroup and use his User ID because
              * for a regular user, "User ID" is the same number as "Private Chat ID".
              */
-            ChatMember[] chatAdmins = await BotClient.GetChatAdministratorsAsync(_fixture.SupergroupChat);
+            ChatMember[] chatAdmins = await BotClient.GetChatAdministrators(Fixture.SupergroupChat);
             privateChatId = chatAdmins
                 .Single(member => member.Status == ChatMemberStatus.Creator)
                 .User.Id;
         }
 
-        Chat chat = await BotClient.GetChatAsync(
+        ChatFullInfo chat = await BotClient.GetChat(
             chatId: privateChatId
         );
 
@@ -122,15 +117,15 @@ public class ChatInfoTests
         Assert.Null(chat.InviteLink);
         Assert.Null(chat.PinnedMessage);
         Assert.Null(chat.StickerSetName);
-        Assert.Null(chat.CanSetStickerSet);
+        Assert.False(chat.CanSetStickerSet);
     }
 
     [OrderedFact("Should get chat members count")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetChatMembersCount)]
     public async Task Should_Get_Chat_Members_Count()
     {
-        int membersCount = await BotClient.GetChatMemberCountAsync(
-            chatId: _fixture.SupergroupChat.Id
+        int membersCount = await BotClient.GetChatMemberCount(
+            chatId: Fixture.SupergroupChat.Id
         );
 
         Assert.True(2 <= membersCount); // at least, Bot and the Creator
@@ -144,9 +139,9 @@ public class ChatInfoTests
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendChatAction)]
     public async Task Should_Send_Chat_Action()
     {
-        await BotClient.SendChatActionAsync(
-            chatId: _fixture.SupergroupChat.Id,
-            chatAction: ChatAction.RecordVoice
+        await BotClient.SendChatAction(
+            chatId: Fixture.SupergroupChat.Id,
+            action: ChatAction.RecordVoice
         );
 
         await Task.Delay(5_000);

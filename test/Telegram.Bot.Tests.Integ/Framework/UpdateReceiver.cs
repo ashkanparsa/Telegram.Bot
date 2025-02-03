@@ -17,10 +17,8 @@ public enum UpdatePosition
     Single
 }
 
-public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? allowedUsernames)
+public class UpdateReceiver(TestsFixture fixture, IEnumerable<string>? allowedUsernames)
 {
-    readonly ITelegramBotClient _botClient = botClient;
-
     public List<string> AllowedUsernames { get; } = allowedUsernames?.ToList() ?? [];
 
     public async Task DiscardNewUpdatesAsync(CancellationToken cancellationToken = default)
@@ -39,7 +37,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var updates = await _botClient.GetUpdatesAsync(
+                var updates = await fixture.BotClient.GetUpdates(
                     offset: offset,
                     allowedUpdates: Enum.GetValues<UpdateType>().Where(u => u != UpdateType.Unknown),
                     cancellationToken: cancellationToken
@@ -137,7 +135,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
         if (discardNewUpdates) { await DiscardNewUpdatesAsync(cancellationToken); }
 
         var updates = await GetUpdatesAsync(
-            predicate: u => (messageId is null || ((Message?)u.CallbackQuery?.Message)?.MessageId == messageId) &&
+            predicate: u => (messageId is null || ((Message?)u.CallbackQuery?.Message)?.Id == messageId) &&
                             (data is null || u.CallbackQuery?.Data == data),
             updateTypes: [UpdateType.CallbackQuery],
             cancellationToken: cancellationToken
@@ -184,9 +182,8 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
             var updates = await GetUpdatesAsync(
-                predicate: u => (u.Message is { Chat.Id: var id, Type: var type } &&
-                                 id == chatId && type == messageType) ||
-                                u.ChosenInlineResult is not null,
+                predicate: u => (u.Message is { Chat.Id: var id, Type: var type } && id == chatId && type == messageType)
+                                || u.ChosenInlineResult is not null,
                 cancellationToken: cancellationToken,
                 updateTypes: [UpdateType.Message, UpdateType.ChosenInlineResult]
             );
@@ -203,7 +200,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
             CancellationToken cancellationToken,
             (Update? update1, Update? update2) updates
         ) =>
-            !cancellationToken.IsCancellationRequested && updates is not ({}, {});
+            !cancellationToken.IsCancellationRequested && updates is not (not null, not null);
     }
 
     async Task<Update[]> GetOnlyAllowedUpdatesAsync(
@@ -211,7 +208,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
         CancellationToken cancellationToken,
         params UpdateType[] types)
     {
-        var updates = await _botClient.GetUpdatesAsync(
+        var updates = await fixture.BotClient.GetUpdates(
             offset: offset,
             timeout: 120,
             allowedUpdates: types,
@@ -246,7 +243,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
                 or UpdateType.ChannelPost
                 or UpdateType.EditedChannelPost => false,
             _ => throw new ArgumentOutOfRangeException(
-                paramName: nameof(update.Type),
+                paramName: "update.Type",
                 actualValue: update.Type,
                 message: $"Unsupported update type {update.Type}"
             ),

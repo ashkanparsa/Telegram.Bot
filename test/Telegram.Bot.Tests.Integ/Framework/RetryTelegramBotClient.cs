@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Exceptions;
@@ -10,64 +11,74 @@ using Xunit.Sdk;
 
 namespace Telegram.Bot.Tests.Integ.Framework;
 
-internal class TestClientOptions : TelegramBotClientOptions
+#if WTB
+#pragma warning disable CS9113, CA1822
+internal class RetryTelegramBotClient(TestConfiguration configuration, IMessageSink diagnosticMessageSink, CancellationToken ct = default)
+    : WTelegramBotClient(MakeOptions(configuration.ApiToken, configuration.ClientApiToken.Split(':')), cancellationToken: ct)
 {
-    public int RetryCount { get; }
-    public TimeSpan DefaultTimeout { get; }
-
-    public TestClientOptions(
-        string token,
-        string? baseUrl,
-        bool useTestEnvironment,
-        int retryCount,
-        TimeSpan defaultTimeout)
-        : base(token, baseUrl, useTestEnvironment)
+    private static StreamWriter WTelegramLogs = new StreamWriter("WTelegramBot.log", true, System.Text.Encoding.UTF8) { AutoFlush = true };
+    private static WTelegramBotClientOptions MakeOptions(string botToken, string[] api)
     {
-        RetryCount = retryCount;
-        DefaultTimeout = defaultTimeout;
+        var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source=WTelegramBot.{botToken.Split(':')[0]}.sqlite");
+        WTelegram.Helpers.Log = (lvl, str) => System.Diagnostics.Trace.WriteLine(str);
+        WTelegram.Helpers.Log += (lvl, str) => WTelegramLogs.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{"TDIWE!"[lvl]}] {str}");
+        return new(botToken, int.Parse(api[0]), api[1], connection);
     }
-};
-
-internal class RetryTelegramBotClient : TelegramBotClient
+    public void WithStreams(Stream[] _) { }
+}
+#else
+internal class RetryTelegramBotClient(TestConfiguration configuration, IMessageSink diagnosticMessageSink, CancellationToken ct = default)
+    : TelegramBotClient(new TelegramBotClientOptions(configuration.ApiToken), cancellationToken: ct)
 {
-    readonly IMessageSink _diagnosticMessageSink;
-    readonly TestClientOptions _options;
+    public int RetryMax { get; } = configuration.RetryCount;
+    public TimeSpan DefaultTimeout { get; } = TimeSpan.FromSeconds(configuration.DefaultRetryTimeout);
 
-    public RetryTelegramBotClient(
-        IMessageSink diagnosticMessageSink,
-        TestClientOptions options)
-        : base(options)
+    private Stream[]? _testStreams;
+    public void WithStreams(Stream[] streams) => _testStreams = streams;
+
+    public override async Task<TResponse> SendRequest<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
-        _diagnosticMessageSink = diagnosticMessageSink;
-        _options = options;
-    }
+        RequestException apiRequestException = new RequestException("Should never been fired");
 
-    public override async Task<TResponse> MakeRequestAsync<TResponse>(
-        IRequest<TResponse> request,
-        CancellationToken cancellationToken = default)
-    {
-        ApiRequestException apiRequestException = default!;
-
-        for (var i = 0; i < _options.RetryCount; i++)
+        try
         {
-            try
+            for (var i = 0; i < RetryMax; i++)
             {
-                return await base.MakeRequestAsync(request, cancellationToken);
-            }
-            catch (ApiRequestException e) when (e.ErrorCode == 429)
-            {
-                apiRequestException = e;
+                try
+                {
+                    return await base.SendRequest(request, cancellationToken);
+                }
+                catch (ApiRequestException e) when (e.ErrorCode == 429)
+                {
+                    apiRequestException = e;
 
-                var timeout = e.Parameters?.RetryAfter is null
-                    ? _options.DefaultTimeout
-                    : TimeSpan.FromSeconds(e.Parameters.RetryAfter.Value);
+                    var timeout = e.Parameters?.RetryAfter is null
+                        ? DefaultTimeout
+                        : TimeSpan.FromSeconds(e.Parameters.RetryAfter.Value);
 
-                var message = $"Retry attempt {i + 1}. Waiting for {timeout} seconds before retrying.";
-                _diagnosticMessageSink.OnMessage(new DiagnosticMessage(message));
-                await Task.Delay(timeout, cancellationToken);
+                    var message = $"Retry attempt {i + 1}. Waiting for {timeout} seconds before retrying.";
+                    diagnosticMessageSink.OnMessage(new DiagnosticMessage(message));
+                    await Task.Delay(timeout, cancellationToken);
+                    if (_testStreams != null)
+                        foreach (var stream in _testStreams)
+                            stream.Position = 0;
+                }
             }
         }
-
+        finally
+        {
+            _testStreams = null;
+        }
         throw apiRequestException;
+    }
+}
+#endif
+
+internal static class RetryTelegramBotClientExtensions
+{
+    public static ITelegramBotClient WithStreams(this ITelegramBotClient botClient, params System.IO.Stream[] streams)
+    {
+        if (botClient is RetryTelegramBotClient retry) retry.WithStreams(streams);
+        return botClient;
     }
 }

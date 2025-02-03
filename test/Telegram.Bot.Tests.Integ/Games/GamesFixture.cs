@@ -31,12 +31,12 @@ public class GamesFixture : AsyncLifetimeFixture
     {
         GameShortName = "game1";
 
-        AddLifetime(
-            initialize: async () =>
+        AddInitializer(
+            async () =>
             {
                 try
                 {
-                    await fixture.BotClient.SendGameAsync(fixture.SupergroupChat.Id, GameShortName);
+                    await fixture.BotClient.SendGame(fixture.SupergroupChat.Id, GameShortName);
                 }
                 catch (ApiRequestException e)
                 {
@@ -53,7 +53,7 @@ public class GamesFixture : AsyncLifetimeFixture
 
     static async Task<User> GetPlayerIdFromChatAdmins(TestsFixture testsFixture, long chatId)
     {
-        ChatMember[] admins = await testsFixture.BotClient.GetChatAdministratorsAsync(chatId);
+        ChatMember[] admins = await testsFixture.BotClient.GetChatAdministrators(chatId);
         ChatMember player = admins[new Random(DateTime.Now.Millisecond).Next(admins.Length)];
         return player.User;
     }

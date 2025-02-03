@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -30,9 +29,7 @@ public sealed class ConfigurationProvider : IDisposable
             {
                 if (x.AllowedUserNamesString is not null)
                 {
-                    x.AllowedUserNames = x.AllowedUserNamesString
-                        .Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToArray();
+                    x.AllowedUserNames = [.. x.AllowedUserNamesString.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
                 }
             });
 

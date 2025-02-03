@@ -1,155 +1,83 @@
-using Telegram.Bot.Types.Enums;
-
 namespace Telegram.Bot.Types;
 
-/// <summary>
-/// This object represents the scope to which bot commands are applied
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public abstract class BotCommandScope
+/// <summary>This object represents the scope to which bot commands are applied. Currently, the following 7 scopes are supported:<br/><see cref="BotCommandScopeDefault"/>, <see cref="BotCommandScopeAllPrivateChats"/>, <see cref="BotCommandScopeAllGroupChats"/>, <see cref="BotCommandScopeAllChatAdministrators"/>, <see cref="BotCommandScopeChat"/>, <see cref="BotCommandScopeChatAdministrators"/>, <see cref="BotCommandScopeChatMember"/></summary>
+[JsonConverter(typeof(PolymorphicJsonConverter<BotCommandScope>))]
+[CustomJsonPolymorphic("type")]
+[CustomJsonDerivedType(typeof(BotCommandScopeDefault), "default")]
+[CustomJsonDerivedType(typeof(BotCommandScopeAllPrivateChats), "all_private_chats")]
+[CustomJsonDerivedType(typeof(BotCommandScopeAllGroupChats), "all_group_chats")]
+[CustomJsonDerivedType(typeof(BotCommandScopeAllChatAdministrators), "all_chat_administrators")]
+[CustomJsonDerivedType(typeof(BotCommandScopeChat), "chat")]
+[CustomJsonDerivedType(typeof(BotCommandScopeChatAdministrators), "chat_administrators")]
+[CustomJsonDerivedType(typeof(BotCommandScopeChatMember), "chat_member")]
+public abstract partial class BotCommandScope
 {
-    /// <summary>
-    /// Scope type
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public abstract BotCommandScopeType Type { get; }
-
-    /// <summary>
-    /// Create a default <see cref="BotCommandScope"/> instance
-    /// </summary>
-    /// <returns></returns>
-    public static BotCommandScopeDefault Default() => new();
-
-    /// <summary>
-    /// Create a <see cref="BotCommandScope"/> instance for all private chats
-    /// </summary>
-    /// <returns></returns>
-    public static BotCommandScopeAllPrivateChats AllPrivateChats() => new();
-
-    /// <summary>
-    /// Create a <see cref="BotCommandScope"/> instance for all group chats
-    /// </summary>
-    public static BotCommandScopeAllGroupChats AllGroupChats() => new();
-
-    /// <summary>
-    /// Create a <see cref="BotCommandScope"/> instance for all chat administrators
-    /// </summary>
-    public static BotCommandScopeAllChatAdministrators AllChatAdministrators() =>
-        new();
-
-    /// <summary>
-    /// Create a <see cref="BotCommandScope"/> instance for a specific <see cref="Chat"/>
-    /// </summary>
-    /// <param name="chatId">
-    /// Unique identifier for the target <see cref="Chat"/> or username of the target supergroup
-    /// </param>
-    public static BotCommandScopeChat Chat(ChatId chatId) => new() { ChatId = chatId };
-
-    /// <summary>
-    /// Create a <see cref="BotCommandScope"/> instance for a specific member in a specific <see cref="Chat"/>
-    /// </summary>
-    /// <param name="chatId">
-    /// Unique identifier for the target <see cref="Chat"/> or username of the target supergroup
-    /// </param>
-    public static BotCommandScopeChatAdministrators ChatAdministrators(ChatId chatId) =>
-        new() { ChatId = chatId };
-
-    /// <summary>
-    /// Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering a specific member of a group or supergroup chat.
-    /// </summary>
-    /// <param name="chatId">
-    /// Unique identifier for the target <see cref="Chat"/> or username of the target supergroup
-    /// </param>
-    /// <param name="userId">Unique identifier of the target user</param>
-    public static BotCommandScopeChatMember ChatMember(ChatId chatId, long userId) =>
-        new() { ChatId = chatId, UserId = userId };
 }
 
-/// <inheritdoc cref="BotCommandScopeType.Default"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeDefault : BotCommandScope
+/// <summary>Represents the default <see cref="BotCommandScope">scope</see> of bot commands. Default commands are used if no commands with a <a href="https://core.telegram.org/bots/api#determining-list-of-commands">narrower scope</a> are specified for the user.</summary>
+public partial class BotCommandScopeDefault : BotCommandScope
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.Default"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.Default;
 }
 
-/// <inheritdoc cref="BotCommandScopeType.AllPrivateChats"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeAllPrivateChats : BotCommandScope
+/// <summary>Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering all private chats.</summary>
+public partial class BotCommandScopeAllPrivateChats : BotCommandScope
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.AllPrivateChats"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.AllPrivateChats;
 }
 
-/// <inheritdoc cref="BotCommandScopeType.AllGroupChats"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeAllGroupChats : BotCommandScope
+/// <summary>Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering all group and supergroup chats.</summary>
+public partial class BotCommandScopeAllGroupChats : BotCommandScope
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.AllGroupChats"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.AllGroupChats;
 }
 
-/// <inheritdoc cref="BotCommandScopeType.AllChatAdministrators"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeAllChatAdministrators : BotCommandScope
+/// <summary>Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering all group and supergroup chat administrators.</summary>
+public partial class BotCommandScopeAllChatAdministrators : BotCommandScope
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.AllChatAdministrators"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.AllChatAdministrators;
 }
 
-/// <inheritdoc cref="BotCommandScopeType.Chat"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeChat : BotCommandScope
+/// <summary>Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering a specific chat.</summary>
+public partial class BotCommandScopeChat : BotCommandScope
 {
-    /// <inheritdoc />
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.Chat"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.Chat;
 
-    /// <summary>
-    /// Unique identifier for the target <see cref="Chat"/> or username of the target supergroup
-    /// (in the format @supergroupusername)
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Unique identifier for the target chat or username of the target supergroup (in the format <c>@supergroupusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public ChatId ChatId { get; set; } = default!;
 }
 
-/// <inheritdoc cref="BotCommandScopeType.ChatAdministrators"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeChatAdministrators : BotCommandScope
+/// <summary>Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering all administrators of a specific group or supergroup chat.</summary>
+public partial class BotCommandScopeChatAdministrators : BotCommandScope
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.ChatAdministrators"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.ChatAdministrators;
 
-    /// <summary>
-    /// Unique identifier for the target <see cref="Chat"/> or username of the target supergroup
-    /// (in the format @supergroupusername)
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Unique identifier for the target chat or username of the target supergroup (in the format <c>@supergroupusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public ChatId ChatId { get; set; } = default!;
 }
 
-/// <inheritdoc cref="BotCommandScopeType.ChatMember"/>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class BotCommandScopeChatMember : BotCommandScope
+/// <summary>Represents the <see cref="BotCommandScope">scope</see> of bot commands, covering a specific member of a group or supergroup chat.</summary>
+public partial class BotCommandScopeChatMember : BotCommandScope
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Scope type, always <see cref="BotCommandScopeType.ChatMember"/></summary>
     public override BotCommandScopeType Type => BotCommandScopeType.ChatMember;
 
-    /// <summary>
-    /// Unique identifier for the target <see cref="Chat"/> or username of the target supergroup
-    /// (in the format @supergroupusername)
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Unique identifier for the target chat or username of the target supergroup (in the format <c>@supergroupusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public ChatId ChatId { get; set; } = default!;
 
-    /// <summary>
-    /// Unique identifier of the target user
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
+    /// <summary>Unique identifier of the target user</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public long UserId { get; set; }
 }

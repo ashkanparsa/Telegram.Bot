@@ -1,44 +1,18 @@
-using Telegram.Bot.Requests.Abstractions;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to set a custom title for an administrator in a supergroup promoted by the bot.
-/// Returns <see langword="true"/> on success.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class SetChatAdministratorCustomTitleRequest : RequestBase<bool>, IChatTargetable, IUserTargetable
+/// <summary>Use this method to set a custom title for an administrator in a supergroup promoted by the bot.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class SetChatAdministratorCustomTitleRequest() : RequestBase<bool>("setChatAdministratorCustomTitle"), IChatTargetable, IUserTargetable
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
-    public ChatId ChatId { get; }
+    /// <summary>Unique identifier for the target chat or username of the target supergroup (in the format <c>@supergroupusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId ChatId { get; set; }
 
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
-    public long UserId { get; }
+    /// <summary>Unique identifier of the target user</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required long UserId { get; set; }
 
-    /// <summary>
-    /// New custom title for the administrator; 0-16 characters, emoji are not allowed
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public string CustomTitle { get; }
-
-    /// <summary>
-    /// Initializes a new request with chatId, userId and customTitle
-    /// </summary>
-    /// <param name="chatId">Unique identifier for the target chat or username of the target channel
-    /// (in the format <c>@channelusername</c>)
-    /// </param>
-    /// <param name="userId">Unique identifier of the target user</param>
-    /// <param name="customTitle">
-    /// New custom title for the administrator; 0-16 characters, emoji are not allowed
-    /// </param>
-    public SetChatAdministratorCustomTitleRequest(ChatId chatId, long userId, string customTitle)
-        : base("setChatAdministratorCustomTitle")
-    {
-        ChatId = chatId;
-        UserId = userId;
-        CustomTitle = customTitle;
-    }
+    /// <summary>New custom title for the administrator; 0-16 characters, emoji are not allowed</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required string CustomTitle { get; set; }
 }

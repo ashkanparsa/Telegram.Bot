@@ -1,87 +1,41 @@
-using System.Net.Http;
-using Telegram.Bot.Requests.Abstractions;
-using Telegram.Bot.Types.ReplyMarkups;
-
-// ReSharper disable once CheckNamespace
 namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to send static .WEBP, animated .TGS, or video .WEBM stickers.
-/// On success, the sent <see cref="Message"/> is returned.
-/// </summary>
-[JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-public class SendStickerRequest : FileRequestBase<Message>, IChatTargetable
+/// <summary>Use this method to send static .WEBP, <a href="https://telegram.org/blog/animated-stickers">animated</a> .TGS, or <a href="https://telegram.org/blog/video-stickers-better-reactions">video</a> .WEBM stickers.<para>Returns: The sent <see cref="Message"/> is returned.</para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class SendStickerRequest() : FileRequestBase<Message>("sendSticker"), IChatTargetable, IBusinessConnectable
 {
-    /// <inheritdoc />
-    [JsonProperty(Required = Required.Always)]
-    public ChatId ChatId { get; }
+    /// <summary>Unique identifier for the target chat or username of the target channel (in the format <c>@channelusername</c>)</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required ChatId ChatId { get; set; }
 
-    /// <summary>
-    /// Optional. Unique identifier for the target message thread (topic) of the forum; for forum supergroups only
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Sticker to send. Pass a FileId as String to send a file that exists on the Telegram servers (recommended), pass an HTTP URL as a String for Telegram to get a .WEBP sticker from the Internet, or upload a new .WEBP, .TGS, or .WEBM sticker using <see cref="InputFileStream"/>. <a href="https://core.telegram.org/bots/api#sending-files">More information on Sending Files »</a>. Video and animated stickers can't be sent via an HTTP URL.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public required InputFile Sticker { get; set; }
+
+    /// <summary>Unique identifier for the target message thread (topic) of the forum; for forum supergroups only</summary>
     public int? MessageThreadId { get; set; }
 
-    /// <summary>
-    /// Sticker to send. Pass a <see cref="InputFileId"/> as String to send a file that
-    /// exists on the Telegram servers (recommended), pass an HTTP URL as a String
-    /// for Telegram to get a .WEBP sticker from the Internet, or upload a new .WEBP
-    /// or .TGS sticker using multipart/form-data.
-    /// Video stickers can only be sent by a <see cref="InputFileId"/>.
-    /// Animated stickers can't be sent via an HTTP URL.
-    /// </summary>
-    [JsonProperty(Required = Required.Always)]
-    public InputFile Sticker { get; }
-
-    /// <summary>
-    /// Optional. Emoji associated with the sticker; only for just uploaded stickers
-    /// </summary>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Emoji associated with the sticker; only for just uploaded stickers</summary>
     public string? Emoji { get; set; }
 
-    /// <inheritdoc cref="Documentation.DisableNotification"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-    public bool? DisableNotification { get; set; }
+    /// <summary>Sends the message <a href="https://telegram.org/blog/channels-2-0#silent-messages">silently</a>. Users will receive a notification with no sound.</summary>
+    public bool DisableNotification { get; set; }
 
-    /// <inheritdoc cref="Abstractions.Documentation.ProtectContent"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-    public bool? ProtectContent { get; set; }
+    /// <summary>Protects the contents of the sent message from forwarding and saving</summary>
+    public bool ProtectContent { get; set; }
 
-    /// <inheritdoc cref="Documentation.ReplyParameters"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Pass <see langword="true"/> to allow up to 1000 messages per second, ignoring <a href="https://core.telegram.org/bots/faq#how-can-i-message-all-of-my-bot-39s-subscribers-at-once">broadcasting limits</a> for a fee of 0.1 Telegram Stars per message. The relevant Stars will be withdrawn from the bot's balance</summary>
+    public bool AllowPaidBroadcast { get; set; }
+
+    /// <summary>Unique identifier of the message effect to be added to the message; for private chats only</summary>
+    public string? MessageEffectId { get; set; }
+
+    /// <summary>Description of the message to reply to</summary>
     public ReplyParameters? ReplyParameters { get; set; }
 
-    /// <inheritdoc cref="Documentation.ReplyMarkup"/>
-    [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+    /// <summary>Additional interface options. An object for an <a href="https://core.telegram.org/bots/features#inline-keyboards">inline keyboard</a>, <a href="https://core.telegram.org/bots/features#keyboards">custom reply keyboard</a>, instructions to remove a reply keyboard or to force a reply from the user</summary>
     public IReplyMarkup? ReplyMarkup { get; set; }
 
-    /// <summary>
-    /// Initializes a new request chatId and sticker
-    /// </summary>
-    /// <param name="chatId">
-    /// Unique identifier for the target chat or username of the target channel
-    /// (in the format <c>@channelusername</c>)
-    /// </param>
-    /// <param name="sticker">
-    /// Sticker to send. Pass a <see cref="InputFileId"/> as String to send a file that
-    /// exists on the Telegram servers (recommended), pass an HTTP URL as a String
-    /// for Telegram to get a .WEBP sticker from the Internet, or upload a new .WEBP
-    /// or .TGS sticker using multipart/form-data.
-    /// Video stickers can only be sent by a <see cref="InputFileId"/>.
-    /// Animated stickers can't be sent via an HTTP URL.
-    /// </param>
-    public SendStickerRequest(ChatId chatId, InputFile sticker)
-        : base("sendSticker")
-    {
-        ChatId = chatId;
-        Sticker = sticker;
-    }
-
-    /// <inheritdoc />
-    public override HttpContent? ToHttpContent() =>
-        Sticker switch
-        {
-            InputFileStream sticker => ToMultipartFormDataContent(fileParameterName: "sticker", inputFile: sticker),
-            _                       => base.ToHttpContent()
-        };
+    /// <summary>Unique identifier of the business connection on behalf of which the message will be sent</summary>
+    public string? BusinessConnectionId { get; set; }
 }

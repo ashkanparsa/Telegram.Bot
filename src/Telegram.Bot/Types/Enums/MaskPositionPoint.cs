@@ -1,28 +1,15 @@
-﻿namespace Telegram.Bot.Types.Enums;
+namespace Telegram.Bot.Types.Enums;
 
-/// <summary>
-/// The part of the face relative to which the mask should be placed.
-/// </summary>
-[JsonConverter(typeof(MaskPositionPointConverter))]
+/// <summary><see cref="MaskPosition"/>: The part of the face relative to which the mask should be placed. One of <see cref="Forehead">Forehead</see>, <see cref="Eyes">Eyes</see>, <see cref="Mouth">Mouth</see>, or <see cref="Chin">Chin</see>.</summary>
+[JsonConverter(typeof(EnumConverter<MaskPositionPoint>))]
 public enum MaskPositionPoint
 {
-    /// <summary>
-    /// The forehead
-    /// </summary>
+    /// <summary>“forehead” point</summary>
     Forehead = 1,
-
-    /// <summary>
-    /// The eyes
-    /// </summary>
+    /// <summary>“eyes” point</summary>
     Eyes,
-
-    /// <summary>
-    /// The mouth
-    /// </summary>
+    /// <summary>“mouth” point</summary>
     Mouth,
-
-    /// <summary>
-    /// The chin
-    /// </summary>
-    Chin
+    /// <summary>“chin” point</summary>
+    Chin,
 }

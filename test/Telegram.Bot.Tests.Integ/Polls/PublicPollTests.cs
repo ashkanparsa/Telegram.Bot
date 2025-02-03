@@ -10,27 +10,18 @@ namespace Telegram.Bot.Tests.Integ.Polls;
 [Collection(Constants.TestCollections.NativePolls)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class PublicPollTests : IClassFixture<PublicPollTestsFixture>
+public class PublicPollTests(PublicPollTestsFixture classFixture)
+    : TestClass(classFixture.TestsFixture), IClassFixture<PublicPollTestsFixture>
 {
-    readonly PublicPollTestsFixture _classFixture;
-    TestsFixture Fixture => _classFixture.TestsFixture;
-    ITelegramBotClient BotClient => Fixture.BotClient;
-
-    public PublicPollTests(PublicPollTestsFixture classFixture)
-    {
-        _classFixture = classFixture;
-    }
-
     [OrderedFact(
-        "Should send public poll with multiple answers",
-        Skip = "Poll tests fail too often for unknown reasons")]
+        "Should send public poll with multiple answers")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPoll)]
     public async Task Should_Send_Non_Anonymous_Poll_With_Multiple_Answers()
     {
-        Message message = await Fixture.BotClient.SendPollAsync(
+        Message message = await Fixture.BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Pick your team",
-            options: new [] { "Aragorn", "Galadriel", "Frodo" },
+            options: ["Aragorn", "Galadriel", "Frodo"],
             isAnonymous: false,
             type: PollType.Regular,
             allowsMultipleAnswers: true
@@ -54,12 +45,11 @@ public class PublicPollTests : IClassFixture<PublicPollTestsFixture>
         Assert.Equal("Frodo", message.Poll.Options[2].Text);
         Assert.All(message.Poll.Options, option => Assert.Equal(0, option.VoterCount));
 
-        _classFixture.OriginalPollMessage = message;
+        classFixture.OriginalPollMessage = message;
     }
 
     [OrderedFact(
-        "Should receive a poll answer update",
-        Skip = "Poll tests fail too often for unknown reasons")]
+        "Should receive a poll answer update")]
     public async Task Should_Receive_Poll_Answer_Update()
     {
         await Fixture.SendTestInstructionsAsync(
@@ -71,7 +61,7 @@ public class PublicPollTests : IClassFixture<PublicPollTestsFixture>
             updateTypes: UpdateType.PollAnswer
         );
 
-        Poll poll = _classFixture.OriginalPollMessage.Poll;
+        Poll poll = classFixture.OriginalPollMessage.Poll;
         PollAnswer pollAnswer = pollAnswerUpdate.PollAnswer;
 
         Assert.NotNull(pollAnswer);
@@ -82,12 +72,11 @@ public class PublicPollTests : IClassFixture<PublicPollTestsFixture>
             optionId => Assert.True(optionId < poll.Options.Length)
         );
 
-        _classFixture.PollAnswer = pollAnswer;
+        classFixture.PollAnswer = pollAnswer;
     }
 
     [OrderedFact(
-        "Should stop non-anonymous the poll",
-        Skip = "Poll tests fail too often for unknown reasons")]
+        "Should stop non-anonymous the poll")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.StopPoll)]
     public async Task Should_Stop_Non_Anonymous_Poll()
     {
@@ -95,15 +84,15 @@ public class PublicPollTests : IClassFixture<PublicPollTestsFixture>
         // doesn't match up with the previously received poll answer
         await Task.Delay(TimeSpan.FromSeconds(5));
 
-        Poll closedPoll = await BotClient.StopPollAsync(
-            chatId: _classFixture.OriginalPollMessage.Chat,
-            messageId: _classFixture.OriginalPollMessage.MessageId
+        Poll closedPoll = await BotClient.StopPoll(
+            chatId: classFixture.OriginalPollMessage.Chat,
+            messageId: classFixture.OriginalPollMessage.Id
         );
 
-        Assert.Equal(_classFixture.OriginalPollMessage.Poll!.Id, closedPoll.Id);
+        Assert.Equal(classFixture.OriginalPollMessage.Poll!.Id, closedPoll.Id);
         Assert.True(closedPoll.IsClosed);
 
-        PollAnswer pollAnswer = _classFixture.PollAnswer;
+        PollAnswer pollAnswer = classFixture.PollAnswer;
 
         Assert.All(
             pollAnswer.OptionIds,

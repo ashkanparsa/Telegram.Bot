@@ -1,5 +1,5 @@
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+
+
 using Telegram.Bot.Types.Enums;
 using Xunit;
 
@@ -11,13 +11,13 @@ public class ParseModeConverterTests
     [InlineData(ParseMode.Markdown, "Markdown")]
     [InlineData(ParseMode.Html, "Html")]
     [InlineData(ParseMode.MarkdownV2, "MarkdownV2")]
-    [InlineData((ParseMode)0, "unknown")]
+    [InlineData(ParseMode.None, "None")]
     public void Should_Convert_ParseMode_To_String(ParseMode parseMode, string value)
     {
         SendMessageRequest sendMessageRequest = new() { ParseMode = parseMode };
-        string expectedResult = @$"{{""parse_mode"":""{value}""}}";
+        string expectedResult = parseMode == 0 ? "{}" : @$"{{""parse_mode"":""{value}""}}";
 
-        string result = JsonConvert.SerializeObject(sendMessageRequest);
+        string result = JsonSerializer.Serialize(sendMessageRequest, JsonBotAPI.Options);
 
         Assert.Equal(expectedResult, result);
     }
@@ -26,33 +26,29 @@ public class ParseModeConverterTests
     [InlineData(ParseMode.Markdown, "Markdown")]
     [InlineData(ParseMode.Html, "Html")]
     [InlineData(ParseMode.MarkdownV2, "MarkdownV2")]
-    [InlineData((ParseMode)0, "unknown")]
+    [InlineData(ParseMode.None, "None")]
     public void Should_Convert_String_To_ParseMode(ParseMode parseMode, string value)
     {
         SendMessageRequest expectedResult = new() { ParseMode = parseMode };
         string jsonData = @$"{{""parse_mode"":""{value}""}}";
 
-        SendMessageRequest? result = JsonConvert.DeserializeObject<SendMessageRequest>(jsonData);
+        SendMessageRequest? result = JsonSerializer.Deserialize<SendMessageRequest>(jsonData, JsonBotAPI.Options);
 
         Assert.NotNull(result);
         Assert.Equal(expectedResult.ParseMode, result.ParseMode);
     }
 
     [Fact]
-    public void Should_Return_Zero_For_Incorrect_ParseMode()
+    public void Should_Throw_For_Invalid_ParseMode()
     {
-        string jsonData = @$"{{""parse_mode"":""{int.MaxValue}""}}";
-
-        SendMessageRequest? result = JsonConvert.DeserializeObject<SendMessageRequest>(jsonData);
-
-        Assert.NotNull(result);
-        Assert.Equal((ParseMode)0, result.ParseMode);
+        string jsonData = @$"{{""parse_mode"":""invalid value""}}";
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SendMessageRequest>(jsonData, JsonBotAPI.Options));
     }
 
-    [JsonObject(MemberSerialization.OptIn, NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+
     class SendMessageRequest
     {
-        [JsonProperty(Required = Required.Always)]
+        [JsonRequired]
         public ParseMode ParseMode { get; init; }
     }
 }

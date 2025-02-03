@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -18,25 +17,15 @@ namespace Telegram.Bot.Tests.Integ.Payments;
 [Collection(Constants.TestCollections.Payment)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
+public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
+    : TestClass(fixture), IClassFixture<PaymentFixture>, IAsyncLifetime
 {
-    readonly TestsFixture _fixture;
-    readonly PaymentFixture _classFixture;
-
-    ITelegramBotClient BotClient => _fixture.BotClient;
-
-    public PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
-    {
-        _fixture = fixture;
-        _classFixture = classFixture;
-    }
-
     [OrderedFact("Should send an invoice")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
     public async Task Should_Send_Invoice()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Lunar crater \"Copernicus\"")
                 .WithDescription(description:
                     "It was named after the astronomer Nicolaus Copernicus. It may have been created by debris" +
@@ -51,13 +40,12 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithCurrency(currency: "USD")
             .WithStartParameter(startParameter: "crater-copernicus")
             .WithPayload(payload: "<my-payload>")
-            .WithPaymentProviderToken(paymentsProviderToken: _classFixture.PaymentProviderToken)
-            .ToChat(chatId: _classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(paymentsProviderToken: classFixture.PaymentProviderToken)
+            .ToChat(chatId: classFixture.PrivateChat.Id);
 
         PreliminaryInvoice preliminaryInvoice = paymentsBuilder.GetPreliminaryInvoice();
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
 
-        Message message = await BotClient.MakeRequestAsync(requestRequest);
+        Message message = await paymentsBuilder.MakeInvoiceRequest(Fixture);
         Invoice invoice = message.Invoice;
 
         Assert.Equal(MessageType.Invoice, message.Type);
@@ -75,7 +63,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Answer_Shipping_Query_With_Ok()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -87,7 +75,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
                     width: 1280,
                     height: 820
                 ))
-            .WithShipping(_ => _
+            .WithShipping(s => s
                 .WithTitle(title: "DHL Express")
                 .WithId(id: "dhl-express")
                 .WithPrice(label: "Packaging", amount: 400_000)
@@ -96,27 +84,23 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithPayload("<my-payload>")
             .WithFlexible()
             .RequireShippingAddress()
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
             .CurrencyFormat();
 
         string instruction = FormatInstructionWithCurrency($"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address.");
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-
-        await BotClient.MakeRequestAsync(requestRequest);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        AnswerShippingQueryRequest shippingQueryRequest = paymentsBuilder.BuildShippingQueryRequest(
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         );
-
-        await BotClient.MakeRequestAsync(shippingQueryRequest);
 
         Assert.Equal(UpdateType.ShippingQuery, shippingUpdate.Type);
         Assert.Equal("<my-payload>", shippingUpdate.ShippingQuery.InvoicePayload);
@@ -127,13 +111,13 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         Assert.NotNull(shippingUpdate.ShippingQuery.ShippingAddress.PostCode);
     }
 
-    [OrderedFact("Should send invoice for no shipment option, and reply pre-checkout query with OK.")]
+    [OrderedFact("Should send invoice with 2 shipment options, and reply pre-checkout query with OK.")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.AnswerPreCheckoutQuery)]
     public async Task Should_Answer_PreCheckout_Query_With_Ok_And_Shipment_Option()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -145,44 +129,44 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
                     width: 1280,
                     height: 820
                 ))
-            .WithShipping(_ => _
+            .WithShipping(s => s
                 .WithTitle(title: "DHL Express")
                 .WithId(id: "dhl-express")
-                .WithPrice(label: "Packaging", amount: 400_000)
                 .WithPrice(label: "Shipping price", amount: 337_600))
+            .WithShipping(s => s
+                .WithTitle(title: "FedEx")
+                .WithId(id: "fedex")
+                .WithPrice(label: "Packaging", amount: 200_000)
+                .WithPrice(label: "Shipping price", amount: 237_600))
             .WithCurrency("USD")
             .WithPayload("<my-payload>")
             .WithFlexible()
             .RequireShippingAddress()
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
             .CurrencyFormat();
 
         string instruction = FormatInstructionWithCurrency(
-            $"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address. Then click *Pay {totalCostWithoutShippingCost:C}* inside payment dialog. Transaction should be completed."
+            $"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address. Then click *Pay {totalCostWithoutShippingCost:C}* inside payment dialog using DHL option. Transaction should be completed."
         );
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-
-        await BotClient.MakeRequestAsync(requestRequest);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        AnswerShippingQueryRequest shippingQueryRequest = paymentsBuilder.BuildShippingQueryRequest(
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         );
-
-        await BotClient.MakeRequestAsync(shippingQueryRequest);
 
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await _fixture.BotClient.AnswerPreCheckoutQueryAsync(
-            preCheckoutQueryId: query!.Id
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
+            query!.Id
         );
 
         PreliminaryInvoice preliminaryInvoice = paymentsBuilder.GetPreliminaryInvoice();
@@ -193,7 +177,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         Assert.Equal("<my-payload>", query.InvoicePayload);
         Assert.Equal(totalAmount, query.TotalAmount);
         Assert.Equal(preliminaryInvoice.Currency, query.Currency);
-        Assert.Contains(query.From.Username, _fixture.UpdateReceiver.AllowedUsernames);
+        Assert.Contains(query.From.Username, Fixture.UpdateReceiver.AllowedUsernames);
         Assert.NotNull(query.OrderInfo);
         Assert.Null(query.OrderInfo.PhoneNumber);
         Assert.Null(query.OrderInfo.Name);
@@ -207,7 +191,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Receive_Successful_Payment_With_Shipment_Option()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -219,7 +203,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
                     width: 1280,
                     height: 820
                 ))
-            .WithShipping(_ => _
+            .WithShipping(s => s
                 .WithTitle(title: "DHL Express")
                 .WithId(id: "dhl-express")
                 .WithPrice(label: "Packaging", amount: 400_000)
@@ -233,8 +217,8 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .RequireShippingAddress()
             .SendEmailToProvider()
             .SendPhoneNumberToProvider()
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
@@ -243,25 +227,21 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}*, send your shipping address and confirm payment. Transaction should be completed."
         );
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-
-        Message invoiceMessage = await BotClient.MakeRequestAsync(requestRequest);
+        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        AnswerShippingQueryRequest shippingQueryRequest = paymentsBuilder.BuildShippingQueryRequest(
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         );
-
-        await BotClient.MakeRequestAsync(shippingQueryRequest);
 
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await _fixture.BotClient.AnswerPreCheckoutQueryAsync(
-            preCheckoutQueryId: query!.Id
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
+            query!.Id
         );
 
         Update successfulPaymentUpdate = await GetSuccessfulPaymentUpdate();
@@ -291,7 +271,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Receive_Successful_Payment_With_A_Tip()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Three tasty donuts")
                 .WithDescription(description: "Donuts with special glaze")
                 .WithProductPrice(label: "Donut with chocolate glaze", amount: 550)
@@ -306,8 +286,8 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithPayload("<my-payload>")
             .WithSuggestedTips(100, 150, 200)
             .WithMaxTip(maxTipAmount: 300)
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
@@ -316,22 +296,21 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}*, select a tip from given options and confirm payment. Transaction should be completed."
         );
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-        Message invoiceMessage = await BotClient.MakeRequestAsync(requestRequest);
+        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(Fixture);
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await _fixture.BotClient.AnswerPreCheckoutQueryAsync(
-            preCheckoutQueryId: query!.Id
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
+            query!.Id
         );
 
         Update successfulPaymentUpdate = await GetSuccessfulPaymentUpdate();
         SuccessfulPayment successfulPayment = successfulPaymentUpdate.Message!.SuccessfulPayment;
         int totalAmount = paymentsBuilder.GetTotalAmount();
 
-        int[] suggestedTips = {100, 150, 200};
+        int[] suggestedTips = [100, 150, 200];
         int[] totalAmountWithTip = suggestedTips.Select(_ => _ + totalAmount).ToArray();
 
         Assert.Contains(totalAmountWithTip, _ => _ == successfulPayment!.TotalAmount);
@@ -346,7 +325,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Answer_Shipping_Query_With_Error()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -358,7 +337,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
                     width: 1280,
                     height: 820
                 ))
-            .WithShipping(_ => _
+            .WithShipping(s => s
                 .WithTitle(title: "DHL Express")
                 .WithId(id: "dhl-express")
                 .WithPrice(label: "Packaging", amount: 400_000)
@@ -367,8 +346,8 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithPayload("<my-payload>")
             .WithFlexible()
             .RequireShippingAddress()
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
@@ -377,20 +356,16 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address. You will receive an error. Close payment window after that."
         );
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-
-        await BotClient.MakeRequestAsync(requestRequest);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        AnswerShippingQueryRequest shippingQueryRequest = paymentsBuilder.BuildShippingQueryRequest(
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id,
             errorMessage: "Sorry, but we don't ship to your contry."
         );
-
-        await BotClient.MakeRequestAsync(shippingQueryRequest);
     }
 
     [OrderedFact("Should send invoice for no shipment option, and reply pre-checkout query with an error.")]
@@ -399,7 +374,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Answer_PreCheckout_Query_With_Error_For_No_Shipment_Option()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -413,8 +388,8 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
                 ))
             .WithCurrency("USD")
             .WithPayload("<my-payload>")
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
@@ -423,16 +398,14 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}* and confirm payment. You should receive an error. Close payment window after that."
         );
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-
-        await BotClient.MakeRequestAsync(requestRequest);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await _fixture.BotClient.AnswerPreCheckoutQueryAsync(
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
             preCheckoutQueryId: query!.Id,
             errorMessage: "Sorry, we couldn't process the transaction. Please, contact our support."
         );
@@ -443,7 +416,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Throw_When_Send_Invoice_Invalid_Provider_Data()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -458,13 +431,11 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithCurrency("USD")
             .WithPayload("<my-payload>")
             .WithProviderData("INVALID-JSON")
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
-
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(
-            async () => await BotClient.MakeRequestAsync(requestRequest)
+            async () => await paymentsBuilder.MakeInvoiceRequest(Fixture)
         );
 
         Assert.Equal(400, exception.ErrorCode);
@@ -476,7 +447,7 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     public async Task Should_Throw_When_Answer_Shipping_Query_With_Duplicate_Shipping_Id()
     {
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -488,12 +459,12 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
                     width: 1280,
                     height: 820
                 ))
-            .WithShipping(_ => _
+            .WithShipping(s => s
                 .WithTitle(title: "DHL Express")
                 .WithId(id: "dhl-express")
                 .WithPrice(label: "Packaging", amount: 400_000)
                 .WithPrice(label: "Shipping price", amount: 337_600))
-            .WithShipping(_ => _
+            .WithShipping(s => s
                 .WithTitle(title: "DHL Express (Duplicate)")
                 .WithId(id: "dhl-express")
                 .WithPrice(label: "Packaging", amount: 400_000)
@@ -502,8 +473,8 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithPayload("<my-payload>")
             .WithFlexible()
             .RequireShippingAddress()
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
         double totalCostWithoutShippingCost = paymentsBuilder
             .GetTotalAmountWithoutShippingCost()
@@ -512,26 +483,21 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}*, send your shipping address. You should receive an error."
         );
-        await _fixture.SendTestInstructionsAsync(instruction, chatId: _classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
-
-        await BotClient.MakeRequestAsync(requestRequest);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        AnswerShippingQueryRequest shippingQueryRequest = paymentsBuilder.BuildShippingQueryRequest(
-            shippingQueryId: shippingUpdate.ShippingQuery!.Id
-        );
-
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(
-            async () => await BotClient.MakeRequestAsync(shippingQueryRequest)
-        );
+            async () => await paymentsBuilder.MakeShippingQueryRequest(Fixture,
+            shippingQueryId: shippingUpdate.ShippingQuery!.Id
+        ));
 
         Assert.Equal(400, exception.ErrorCode);
         Assert.Equal("Bad Request: SHIPPING_ID_DUPLICATE", exception.Message);
 
-        await _fixture.BotClient.AnswerShippingQueryAsync(
+        await Fixture.BotClient.AnswerShippingQuery(
             shippingQueryId: shippingUpdate.ShippingQuery.Id,
             errorMessage: "✅ Test Passed"
         );
@@ -541,21 +507,17 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
     public async Task Should_Send_Invoice_With_Reply_Markup()
     {
-        InlineKeyboardMarkup replyMarkup = new(new[]
-        {
-            new[]
-            {
-                InlineKeyboardButton.WithPayment("Pay this invoice"),
+        InlineKeyboardMarkup replyMarkup = new(
+        [
+            [
+                InlineKeyboardButton.WithPay("Pay this invoice"),
                 InlineKeyboardButton.WithUrl("Repository", "https://github.com/TelegramBots/Telegram.Bot")
-            },
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData("Some other button")
-            }
-        });
+            ],
+            [InlineKeyboardButton.WithCallbackData("Some other button")]
+        ]);
 
         PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
-            .WithProduct(_ => _
+            .WithProduct(p => p
                 .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
                 .WithDescription(description:
                     "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
@@ -570,44 +532,105 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
             .WithCurrency("USD")
             .WithPayload("<my-payload>")
             .WithReplyMarkup(replyMarkup)
-            .WithPaymentProviderToken(_classFixture.PaymentProviderToken)
-            .ToChat(_classFixture.PrivateChat.Id);
+            .WithPaymentProviderToken(classFixture.PaymentProviderToken)
+            .ToChat(classFixture.PrivateChat.Id);
 
-        SendInvoiceRequest requestRequest = paymentsBuilder.BuildInvoiceRequest();
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
+    }
 
-        await BotClient.MakeRequestAsync(requestRequest);
+    [OrderedFact("Should send a Telegram Stars invoice")]
+    [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
+    public async Task Should_Send_XTR_Invoice()
+    {
+        PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
+            .WithProduct(p => p
+                .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
+                .WithDescription(description:
+                    "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
+                    " after her birth, when she had emerged from the sea fully-grown ")
+                .WithProductPrice(label: "Price of the painting", amount: 100)
+                .WithPhoto(
+                    url: "https://cdn.pixabay.com/photo/2012/10/26/03/16/painting-63186_1280.jpg",
+                    width: 1280,
+                    height: 820
+                ))
+            .WithCurrency("XTR")
+            .WithPayload("<my-payload>")
+            .WithPaymentProviderToken("")
+            .ToChat(classFixture.PrivateChat.Id);
+
+        double totalCostWithoutShippingCost = paymentsBuilder
+            .GetTotalAmountWithoutShippingCost();
+
+        //string instruction = FormatInstructionWithCurrency(
+        //    $"Click on *Pay ⭐️ {totalCostWithoutShippingCost}* and confirm payment. Transaction should be completed."
+        //);
+        //await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+
+        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(Fixture);
+        Invoice invoice = invoiceMessage.Invoice;
+
+        Assert.Equal(MessageType.Invoice, invoiceMessage.Type);
+        Assert.NotNull(invoice);
+        Assert.Equal("XTR", invoice.Currency);
+        Assert.Equal(totalCostWithoutShippingCost, invoice.TotalAmount);
+
+        //Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
+        //PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
+
+        //await fixture.BotClient.AnswerPreCheckoutQuery(
+        //    query!.Id
+        //);
+
+        //Update successfulPaymentUpdate = await GetSuccessfulPaymentUpdate();
+        //SuccessfulPayment successfulPayment = successfulPaymentUpdate.Message!.SuccessfulPayment;
+        //int totalAmount = paymentsBuilder.GetTotalAmount();
+
+        //Assert.Equal(invoice.Currency, successfulPayment.Currency);
+        //Assert.Equal(UpdateType.PreCheckoutQuery, preCheckoutUpdate.Type);
+        //Assert.NotNull(query.Id);
+        //Assert.Equal("<my-payload>", query.InvoicePayload);
+        //Assert.Equal(totalAmount, query.TotalAmount);
+        //Assert.Equal("XTR", query.Currency);
+        //Assert.Contains(query.From.Username, fixture.UpdateReceiver.AllowedUsernames);
+        //Assert.NotNull(query.OrderInfo);
+        //Assert.Null(query.OrderInfo.PhoneNumber);
+        //Assert.Null(query.OrderInfo.Name);
+        //Assert.Null(query.OrderInfo.Email);
+        //Assert.Equal("dhl-express", query.ShippingOptionId);
     }
 
     async Task<Update> GetShippingQueryUpdate(CancellationToken cancellationToken = default)
     {
-        Update[] updates = await _fixture.UpdateReceiver.GetUpdatesAsync(
+        Update[] updates = await Fixture.UpdateReceiver.GetUpdatesAsync(
             cancellationToken: cancellationToken,
             updateTypes: UpdateType.ShippingQuery
         );
 
         Update update = updates.Single();
 
-        await _fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
+        await Fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
         return update;
     }
 
     async Task<Update> GetPreCheckoutQueryUpdate(CancellationToken cancellationToken = default)
     {
-        Update[] updates = await _fixture.UpdateReceiver.GetUpdatesAsync(
+        Update[] updates = await Fixture.UpdateReceiver.GetUpdatesAsync(
             cancellationToken: cancellationToken,
-            updateTypes: UpdateType.PreCheckoutQuery);
+            updateTypes: UpdateType.PreCheckoutQuery
+        );
 
         Update update = updates.Single();
 
-        await _fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
+        await Fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
         return update;
     }
 
     async Task<Update> GetSuccessfulPaymentUpdate(CancellationToken cancellationToken = default)
     {
-        Update[] updates = await _fixture.UpdateReceiver.GetUpdatesAsync(
+        Update[] updates = await Fixture.UpdateReceiver.GetUpdatesAsync(
             predicate: u => u.Message?.Type == MessageType.SuccessfulPayment,
             cancellationToken: cancellationToken,
             updateTypes: UpdateType.Message
@@ -615,12 +638,12 @@ public class PaymentTests : IClassFixture<PaymentFixture>, IAsyncLifetime
 
         Update update = updates.Single();
 
-        await _fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
+        await Fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
         return update;
     }
 
-    public async Task InitializeAsync() => await _fixture.UpdateReceiver.DiscardNewUpdatesAsync();
+    public async Task InitializeAsync() => await Fixture.UpdateReceiver.DiscardNewUpdatesAsync();
     public Task DisposeAsync() => Task.CompletedTask;
 
     public static string FormatInstructionWithCurrency(FormattableString instruction) =>
