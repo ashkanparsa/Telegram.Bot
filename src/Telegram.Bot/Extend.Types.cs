@@ -65,6 +65,33 @@ namespace Telegram.Bot.Types
         public override string ToString() => Username != null ? $"@{Username} ({Id})" : $"{FirstName}{LastName?.Insert(0, " ")} ({Id})";
     }
 
+    public partial class ChatMember
+    {
+        /// <summary>Check if the user is chat admin or owner</summary>
+        public bool IsAdmin => Status is ChatMemberStatus.Administrator or ChatMemberStatus.Creator;
+        /// <summary>Check if the user is in the chat</summary>
+        public bool IsInChat => Status switch
+        {
+            ChatMemberStatus.Left or ChatMemberStatus.Kicked => false,
+            ChatMemberStatus.Restricted => ((ChatMemberRestricted)this).IsMember,
+            _ => true
+        };
+    }
+
+    public partial class ChatPermissions
+    {
+        /// <summary>Initializes a new <see cref="ChatPermissions"/> instance with all fields set to <see langword="false"/>.</summary>
+        public ChatPermissions() { }
+        /// <summary>Initializes a new <see cref="ChatPermissions"/> instance with all fields set to the specified value.</summary>
+        /// <param name="defaultValue"><see langword="true"/> to allow all permissions by default</param>
+        public ChatPermissions(bool defaultValue)
+        {
+            CanSendMessages = CanSendAudios = CanSendDocuments = CanSendPhotos = defaultValue;
+            CanSendVideos = CanSendVideoNotes = CanSendVoiceNotes = CanSendPolls = CanSendOtherMessages = defaultValue;
+            CanAddWebPagePreviews = CanChangeInfo = CanInviteUsers = CanPinMessages = CanManageTopics = defaultValue;
+        }
+    }
+
     public partial class ReplyParameters
     {
         /// <summary>Implicit operator when you just want to reply to a message in same chat</summary>
