@@ -36,19 +36,19 @@ public class StickersTestsFixture(TestsFixture testsFixture) : AsyncLifetimeFixt
     //Regular stickers
     public string TestStaticRegularStickerSetName { get; } = $"test_static_regular_set_by_{testsFixture.BotUser.Username}";
 
-    public File TestUploadedStaticStickerFile { get; set; }
+    public TGFile TestUploadedStaticStickerFile { get; set; }
 
     public StickerSet TestStaticRegularStickerSet { get; set; }
 
     public string TestAnimatedRegularStickerSetName { get; } = $"test_animated_regular_set_by_{testsFixture.BotUser.Username}";
 
-    public File TestUploadedAnimatedStickerFile { get; set; }
+    public TGFile TestUploadedAnimatedStickerFile { get; set; }
 
     public StickerSet TestAnimatedRegularStickerSet { get; set; }
 
     public string TestVideoRegularStickerSetName { get; } = $"test_video_regular_set_by_{testsFixture.BotUser.Username}";
 
-    public File TestUploadedVideoStickerFile { get; set; }
+    public TGFile TestUploadedVideoStickerFile { get; set; }
 
     public StickerSet TestVideoRegularStickerSet { get; set; }
 
@@ -76,17 +76,17 @@ public class StickersTestsFixture(TestsFixture testsFixture) : AsyncLifetimeFixt
             );
 
             const string cqData = "sticker_tests:owner";
-            Message cqMessage = await testsFixture.BotClient.SendTextMessageAsync(
+            Message cqMessage = await testsFixture.BotClient.SendMessage(
                 chatId: testsFixture.SupergroupChat,
                 text: $"{testsFixture.UpdateReceiver.GetTesters()}\nUse the following button to become Sticker Set Owner",
-                replyParameters: new() { MessageId = notificationMessage.MessageId },
+                replyParameters: new() { MessageId = notificationMessage.Id },
                 replyMarkup: new InlineKeyboardMarkup(
                     InlineKeyboardButton.WithCallbackData("I am the Owner!", cqData)
                 )
             );
 
             Update cqUpdate = await testsFixture.UpdateReceiver
-                .GetCallbackQueryUpdateAsync(cqMessage.MessageId, cqData);
+                .GetCallbackQueryUpdateAsync(cqMessage.Id, cqData);
 
             ownerId = cqUpdate.CallbackQuery!.From.Id;
         }

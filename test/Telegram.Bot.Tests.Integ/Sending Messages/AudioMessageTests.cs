@@ -9,10 +9,8 @@ namespace Telegram.Bot.Tests.Integ.Sending_Messages;
 
 [Collection(Constants.TestCollections.SendAudioMessage)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class AudioMessageTests(TestsFixture fixture)
+public class AudioMessageTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should send an audio with caption")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendAudio)]
     public async Task Should_Send_Audio()
@@ -23,10 +21,10 @@ public class AudioMessageTests(TestsFixture fixture)
         const string caption = "Audio File in .mp3 format";
 
         Message message;
-        await using (Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Audio.CantinaRagMp3))
+        await using (Stream stream = File.OpenRead(Constants.PathToFile.Audio.CantinaRagMp3))
         {
-            message = await BotClient.SendAudioAsync(
-                chatId: fixture.SupergroupChat,
+            message = await BotClient.WithStreams(stream).SendAudio(
+                chatId: Fixture.SupergroupChat,
                 audio: InputFile.FromStream(stream, "Jackson F Smith - Cantina Rag.mp3"),
                 title: title,
                 performer: performer,
@@ -55,12 +53,12 @@ public class AudioMessageTests(TestsFixture fixture)
         // Both audio file and its thumbnail should be uploaded
         Message message;
         await using (Stream
-                     stream1 = System.IO.File.OpenRead(Constants.PathToFile.Audio.AStateOfDespairMp3),
-                     stream2 = System.IO.File.OpenRead(Constants.PathToFile.Thumbnail.TheAbilityToBreak)
+                     stream1 = File.OpenRead(Constants.PathToFile.Audio.AStateOfDespairMp3),
+                     stream2 = File.OpenRead(Constants.PathToFile.Thumbnail.TheAbilityToBreak)
                     )
         {
-            message = await BotClient.SendAudioAsync(
-                chatId: fixture.SupergroupChat,
+            message = await BotClient.WithStreams(stream1, stream2).SendAudio(
+                chatId: Fixture.SupergroupChat,
                 audio: InputFile.FromStream(stream1, "Ask Again - A State of Despair.mp3"),
                 thumbnail: InputFile.FromStream(stream2, "thumb.jpg")
             );
@@ -83,10 +81,10 @@ public class AudioMessageTests(TestsFixture fixture)
         const string caption = "Test Voice in .ogg format";
 
         Message message;
-        await using (Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Audio.TestOgg))
+        await using (Stream stream = File.OpenRead(Constants.PathToFile.Audio.TestOgg))
         {
-            message = await BotClient.SendVoiceAsync(
-                chatId: fixture.SupergroupChat,
+            message = await BotClient.WithStreams(stream).SendVoice(
+                chatId: Fixture.SupergroupChat,
                 voice: InputFile.FromStream(stream),
                 caption: caption,
                 duration: duration

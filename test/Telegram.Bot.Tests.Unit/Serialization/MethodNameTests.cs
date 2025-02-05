@@ -2,7 +2,6 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Telegram.Bot.Requests;
 using Xunit;
-using JsonSerializerOptionsProvider = Telegram.Bot.Serialization.JsonSerializerOptionsProvider;
 
 namespace Telegram.Bot.Tests.Unit.Serialization;
 
@@ -18,7 +17,7 @@ public class MethodNameTests
             IsWebhookResponse = true
         };
 
-        string request = JsonSerializer.Serialize(sendMessageRequest, JsonSerializerOptionsProvider.Options);
+        string request = JsonSerializer.Serialize(sendMessageRequest, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(request);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -39,7 +38,7 @@ public class MethodNameTests
             IsWebhookResponse = false
         };
 
-        string request = JsonSerializer.Serialize(sendMessageRequest, JsonSerializerOptionsProvider.Options);
+        string request = JsonSerializer.Serialize(sendMessageRequest, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(request);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -55,7 +54,7 @@ public class MethodNameTests
     {
         DeleteWebhookRequest deleteWebhookRequest = new() { IsWebhookResponse = true };
 
-        string request = JsonSerializer.Serialize(deleteWebhookRequest, JsonSerializerOptionsProvider.Options);
+        string request = JsonSerializer.Serialize(deleteWebhookRequest, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(request);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -69,7 +68,7 @@ public class MethodNameTests
     {
         DeleteWebhookRequest deleteWebhookRequest = new() { IsWebhookResponse = false };
 
-        string request = JsonSerializer.Serialize(deleteWebhookRequest, JsonSerializerOptionsProvider.Options);
+        string request = JsonSerializer.Serialize(deleteWebhookRequest, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(request);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -86,17 +85,17 @@ public class MethodNameTests
         Assert.NotNull(content);
     }
 
-    [Fact(DisplayName = "Should build a StringContent with method name in parameterless webhook responses")]
-    public async Task Should_Build_StringContent_With_MethodName_In_Parameterless_Webhook_ResponseAsync()
+    [Fact(DisplayName = "Should build a json with method name in parameterless webhook responses")]
+    public async Task Should_Build_Json_With_MethodName_In_Parameterless_Webhook_ResponseAsync()
     {
         CloseRequest closeRequest = new() { IsWebhookResponse = true };
 
         HttpContent? content = closeRequest.ToHttpContent();
 
-        StringContent stringContent = Assert.IsAssignableFrom<StringContent>(content);
+        //StringContent stringContent = Assert.IsAssignableFrom<StringContent>(content);
         Assert.NotNull(content);
 
-        string body = await stringContent.ReadAsStringAsync();
+        string body = await content.ReadAsStringAsync();
         JsonNode? root = JsonNode.Parse(body);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -19,10 +18,8 @@ namespace Telegram.Bot.Tests.Integ.Payments;
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
 public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
-    : IClassFixture<PaymentFixture>, IAsyncLifetime
+    : TestClass(fixture), IClassFixture<PaymentFixture>, IAsyncLifetime
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should send an invoice")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
     public async Task Should_Send_Invoice()
@@ -48,7 +45,7 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
 
         PreliminaryInvoice preliminaryInvoice = paymentsBuilder.GetPreliminaryInvoice();
 
-        Message message = await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        Message message = await paymentsBuilder.MakeInvoiceRequest(Fixture);
         Invoice invoice = message.Invoice;
 
         Assert.Equal(MessageType.Invoice, message.Type);
@@ -95,13 +92,13 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
             .CurrencyFormat();
 
         string instruction = FormatInstructionWithCurrency($"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address.");
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        await paymentsBuilder.MakeShippingQueryRequest(BotClient,
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         );
 
@@ -114,7 +111,7 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         Assert.NotNull(shippingUpdate.ShippingQuery.ShippingAddress.PostCode);
     }
 
-    [OrderedFact("Should send invoice for no shipment option, and reply pre-checkout query with OK.")]
+    [OrderedFact("Should send invoice with 2 shipment options, and reply pre-checkout query with OK.")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.AnswerPreCheckoutQuery)]
     public async Task Should_Answer_PreCheckout_Query_With_Ok_And_Shipment_Option()
@@ -135,8 +132,12 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
             .WithShipping(s => s
                 .WithTitle(title: "DHL Express")
                 .WithId(id: "dhl-express")
-                .WithPrice(label: "Packaging", amount: 400_000)
                 .WithPrice(label: "Shipping price", amount: 337_600))
+            .WithShipping(s => s
+                .WithTitle(title: "FedEx")
+                .WithId(id: "fedex")
+                .WithPrice(label: "Packaging", amount: 200_000)
+                .WithPrice(label: "Shipping price", amount: 237_600))
             .WithCurrency("USD")
             .WithPayload("<my-payload>")
             .WithFlexible()
@@ -149,22 +150,22 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
             .CurrencyFormat();
 
         string instruction = FormatInstructionWithCurrency(
-            $"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address. Then click *Pay {totalCostWithoutShippingCost:C}* inside payment dialog. Transaction should be completed."
+            $"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address. Then click *Pay {totalCostWithoutShippingCost:C}* inside payment dialog using DHL option. Transaction should be completed."
         );
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        await paymentsBuilder.MakeShippingQueryRequest(BotClient,
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         );
 
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await fixture.BotClient.AnswerPreCheckoutQueryAsync(
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
             query!.Id
         );
 
@@ -176,7 +177,7 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         Assert.Equal("<my-payload>", query.InvoicePayload);
         Assert.Equal(totalAmount, query.TotalAmount);
         Assert.Equal(preliminaryInvoice.Currency, query.Currency);
-        Assert.Contains(query.From.Username, fixture.UpdateReceiver.AllowedUsernames);
+        Assert.Contains(query.From.Username, Fixture.UpdateReceiver.AllowedUsernames);
         Assert.NotNull(query.OrderInfo);
         Assert.Null(query.OrderInfo.PhoneNumber);
         Assert.Null(query.OrderInfo.Name);
@@ -226,20 +227,20 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}*, send your shipping address and confirm payment. Transaction should be completed."
         );
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        await paymentsBuilder.MakeShippingQueryRequest(BotClient,
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         );
 
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await fixture.BotClient.AnswerPreCheckoutQueryAsync(
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
             query!.Id
         );
 
@@ -295,13 +296,13 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}*, select a tip from given options and confirm payment. Transaction should be completed."
         );
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(Fixture);
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await fixture.BotClient.AnswerPreCheckoutQueryAsync(
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
             query!.Id
         );
 
@@ -355,13 +356,13 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}* and send your shipping address. You will receive an error. Close payment window after that."
         );
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
-        await paymentsBuilder.MakeShippingQueryRequest(BotClient,
+        await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id,
             errorMessage: "Sorry, but we don't ship to your contry."
         );
@@ -397,14 +398,14 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}* and confirm payment. You should receive an error. Close payment window after that."
         );
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
         PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
 
-        await fixture.BotClient.AnswerPreCheckoutQueryAsync(
+        await Fixture.BotClient.AnswerPreCheckoutQuery(
             preCheckoutQueryId: query!.Id,
             errorMessage: "Sorry, we couldn't process the transaction. Please, contact our support."
         );
@@ -434,7 +435,7 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
             .ToChat(classFixture.PrivateChat.Id);
 
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(
-            async () => await paymentsBuilder.MakeInvoiceRequest(BotClient)
+            async () => await paymentsBuilder.MakeInvoiceRequest(Fixture)
         );
 
         Assert.Equal(400, exception.ErrorCode);
@@ -482,21 +483,21 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
         string instruction = FormatInstructionWithCurrency(
             $"Click on *Pay {totalCostWithoutShippingCost:C}*, send your shipping address. You should receive an error."
         );
-        await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+        await Fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
 
-        await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
 
         Update shippingUpdate = await GetShippingQueryUpdate();
 
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(
-            async () => await paymentsBuilder.MakeShippingQueryRequest(BotClient,
+            async () => await paymentsBuilder.MakeShippingQueryRequest(Fixture,
             shippingQueryId: shippingUpdate.ShippingQuery!.Id
         ));
 
         Assert.Equal(400, exception.ErrorCode);
         Assert.Equal("Bad Request: SHIPPING_ID_DUPLICATE", exception.Message);
 
-        await fixture.BotClient.AnswerShippingQueryAsync(
+        await Fixture.BotClient.AnswerShippingQuery(
             shippingQueryId: shippingUpdate.ShippingQuery.Id,
             errorMessage: "✅ Test Passed"
         );
@@ -534,40 +535,102 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
             .WithPaymentProviderToken(classFixture.PaymentProviderToken)
             .ToChat(classFixture.PrivateChat.Id);
 
-        await paymentsBuilder.MakeInvoiceRequest(BotClient);
+        await paymentsBuilder.MakeInvoiceRequest(Fixture);
+    }
+
+    [OrderedFact("Should send a Telegram Stars invoice")]
+    [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendInvoice)]
+    public async Task Should_Send_XTR_Invoice()
+    {
+        PaymentsBuilder paymentsBuilder = new PaymentsBuilder()
+            .WithProduct(p => p
+                .WithTitle(title: "Reproduction of \"La nascita di Venere\"")
+                .WithDescription(description:
+                    "Sandro Botticelli’s the Birth of Venus depicts the goddess Venus arriving at the shore" +
+                    " after her birth, when she had emerged from the sea fully-grown ")
+                .WithProductPrice(label: "Price of the painting", amount: 100)
+                .WithPhoto(
+                    url: "https://cdn.pixabay.com/photo/2012/10/26/03/16/painting-63186_1280.jpg",
+                    width: 1280,
+                    height: 820
+                ))
+            .WithCurrency("XTR")
+            .WithPayload("<my-payload>")
+            .WithPaymentProviderToken("")
+            .ToChat(classFixture.PrivateChat.Id);
+
+        double totalCostWithoutShippingCost = paymentsBuilder
+            .GetTotalAmountWithoutShippingCost();
+
+        //string instruction = FormatInstructionWithCurrency(
+        //    $"Click on *Pay ⭐️ {totalCostWithoutShippingCost}* and confirm payment. Transaction should be completed."
+        //);
+        //await fixture.SendTestInstructionsAsync(instruction, chatId: classFixture.PrivateChat.Id);
+
+        Message invoiceMessage = await paymentsBuilder.MakeInvoiceRequest(Fixture);
+        Invoice invoice = invoiceMessage.Invoice;
+
+        Assert.Equal(MessageType.Invoice, invoiceMessage.Type);
+        Assert.NotNull(invoice);
+        Assert.Equal("XTR", invoice.Currency);
+        Assert.Equal(totalCostWithoutShippingCost, invoice.TotalAmount);
+
+        //Update preCheckoutUpdate = await GetPreCheckoutQueryUpdate();
+        //PreCheckoutQuery query = preCheckoutUpdate.PreCheckoutQuery;
+
+        //await fixture.BotClient.AnswerPreCheckoutQuery(
+        //    query!.Id
+        //);
+
+        //Update successfulPaymentUpdate = await GetSuccessfulPaymentUpdate();
+        //SuccessfulPayment successfulPayment = successfulPaymentUpdate.Message!.SuccessfulPayment;
+        //int totalAmount = paymentsBuilder.GetTotalAmount();
+
+        //Assert.Equal(invoice.Currency, successfulPayment.Currency);
+        //Assert.Equal(UpdateType.PreCheckoutQuery, preCheckoutUpdate.Type);
+        //Assert.NotNull(query.Id);
+        //Assert.Equal("<my-payload>", query.InvoicePayload);
+        //Assert.Equal(totalAmount, query.TotalAmount);
+        //Assert.Equal("XTR", query.Currency);
+        //Assert.Contains(query.From.Username, fixture.UpdateReceiver.AllowedUsernames);
+        //Assert.NotNull(query.OrderInfo);
+        //Assert.Null(query.OrderInfo.PhoneNumber);
+        //Assert.Null(query.OrderInfo.Name);
+        //Assert.Null(query.OrderInfo.Email);
+        //Assert.Equal("dhl-express", query.ShippingOptionId);
     }
 
     async Task<Update> GetShippingQueryUpdate(CancellationToken cancellationToken = default)
     {
-        Update[] updates = await fixture.UpdateReceiver.GetUpdatesAsync(
+        Update[] updates = await Fixture.UpdateReceiver.GetUpdatesAsync(
             cancellationToken: cancellationToken,
             updateTypes: UpdateType.ShippingQuery
         );
 
         Update update = updates.Single();
 
-        await fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
+        await Fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
         return update;
     }
 
     async Task<Update> GetPreCheckoutQueryUpdate(CancellationToken cancellationToken = default)
     {
-        Update[] updates = await fixture.UpdateReceiver.GetUpdatesAsync(
+        Update[] updates = await Fixture.UpdateReceiver.GetUpdatesAsync(
             cancellationToken: cancellationToken,
             updateTypes: UpdateType.PreCheckoutQuery
         );
 
         Update update = updates.Single();
 
-        await fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
+        await Fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
         return update;
     }
 
     async Task<Update> GetSuccessfulPaymentUpdate(CancellationToken cancellationToken = default)
     {
-        Update[] updates = await fixture.UpdateReceiver.GetUpdatesAsync(
+        Update[] updates = await Fixture.UpdateReceiver.GetUpdatesAsync(
             predicate: u => u.Message?.Type == MessageType.SuccessfulPayment,
             cancellationToken: cancellationToken,
             updateTypes: UpdateType.Message
@@ -575,12 +638,12 @@ public class PaymentTests(TestsFixture fixture, PaymentFixture classFixture)
 
         Update update = updates.Single();
 
-        await fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
+        await Fixture.UpdateReceiver.DiscardNewUpdatesAsync(cancellationToken);
 
         return update;
     }
 
-    public async Task InitializeAsync() => await fixture.UpdateReceiver.DiscardNewUpdatesAsync();
+    public async Task InitializeAsync() => await Fixture.UpdateReceiver.DiscardNewUpdatesAsync();
     public Task DisposeAsync() => Task.CompletedTask;
 
     public static string FormatInstructionWithCurrency(FormattableString instruction) =>

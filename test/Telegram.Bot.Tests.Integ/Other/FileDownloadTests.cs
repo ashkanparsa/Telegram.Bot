@@ -2,35 +2,32 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Xunit;
 using Xunit.Abstractions;
-using File = Telegram.Bot.Types.File;
 
 namespace Telegram.Bot.Tests.Integ.Other;
 
 [Collection(Constants.TestCollections.FileDownload)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.Fixture classFixture, ITestOutputHelper output)
-    : IClassFixture<FileDownloadTests.Fixture>
+public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.ClassFixture classFixture, ITestOutputHelper output)
+    : TestClass(fixture), IClassFixture<FileDownloadTests.ClassFixture>
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should get file info")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetFile)]
     public async Task Should_Get_File_Info()
     {
-        const int fileSize = 253736;
+        long fileSize = 253736;
 
         #region Send Document
 
         Message documentMessage;
-        await using (Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Documents.Hamlet))
+        await using (FileStream stream = File.OpenRead(Constants.PathToFile.Documents.Hamlet))
         {
-            documentMessage = await BotClient.SendDocumentAsync(
-                chatId: fixture.SupergroupChat,
+            fileSize = stream.Length;
+            documentMessage = await BotClient.WithStreams(stream).SendDocument(
+                chatId: Fixture.SupergroupChat,
                 document: InputFile.FromStream(stream)
             );
         }
@@ -39,7 +36,7 @@ public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.Fixture c
 
         #endregion
 
-        File file = await BotClient.GetFileAsync(documentMessage.Document.FileId);
+        TGFile file = await BotClient.GetFile(documentMessage.Document.FileId);
 
         Assert.Equal(fileId, file.FileId);
         Assert.NotNull(file.FileSize);
@@ -55,11 +52,11 @@ public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.Fixture c
     {
         long? fileSize = classFixture.File.FileSize;
 
-        string destinationFilePath = $"{Path.GetTempFileName()}.{Fixture.FileType}";
+        string destinationFilePath = $"{Path.GetTempFileName()}.{ClassFixture.FileType}";
         output.WriteLine($@"Writing file to ""{destinationFilePath}""");
 
-        await using FileStream fileStream = System.IO.File.OpenWrite(destinationFilePath);
-        await BotClient.DownloadFileAsync(
+        await using FileStream fileStream = File.OpenWrite(destinationFilePath);
+        await BotClient.DownloadFile(
             filePath: classFixture.File.FilePath!,
             destination: fileStream
         );
@@ -73,11 +70,11 @@ public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.Fixture c
     {
         long? fileSize = classFixture.File.FileSize;
 
-        string destinationFilePath = $"{Path.GetTempFileName()}.{Fixture.FileType}";
+        string destinationFilePath = $"{Path.GetTempFileName()}.{ClassFixture.FileType}";
         output.WriteLine($@"Writing file to ""{destinationFilePath}""");
 
-        await using FileStream fileStream = System.IO.File.OpenWrite(destinationFilePath);
-        File file = await BotClient.GetInfoAndDownloadFileAsync(
+        await using FileStream fileStream = File.OpenWrite(destinationFilePath);
+        TGFile file = await BotClient.GetInfoAndDownloadFile(
             fileId: classFixture.File.FileId,
             destination: fileStream
         );
@@ -92,7 +89,7 @@ public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.Fixture c
     public async Task Should_Throw_FileId_InvalidParameterException()
     {
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(async () =>
-            await BotClient.GetFileAsync("Invalid_File_id")
+            await BotClient.GetFile("Invalid_File_id")
         );
 
         Assert.Contains("file_id", exception.Message);
@@ -106,16 +103,16 @@ public class FileDownloadTests(TestsFixture fixture, FileDownloadTests.Fixture c
         await Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
             // ReSharper disable once AssignNullToNotNullAttribute
-            await BotClient.DownloadFileAsync("Invalid_File_Path", content);
+            await BotClient.DownloadFile("Invalid_File_Path", content);
         });
 
         Assert.Null(content);
     }
 
-    public class Fixture
+    public class ClassFixture
     {
         public const string FileType = "pdf";
 
-        public File File { get; set; }
+        public TGFile File { get; set; }
     }
 }

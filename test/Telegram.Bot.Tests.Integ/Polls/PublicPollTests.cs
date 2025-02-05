@@ -10,17 +10,15 @@ namespace Telegram.Bot.Tests.Integ.Polls;
 [Collection(Constants.TestCollections.NativePolls)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class PublicPollTests(PublicPollTestsFixture classFixture) : IClassFixture<PublicPollTestsFixture>
+public class PublicPollTests(PublicPollTestsFixture classFixture)
+    : TestClass(classFixture.TestsFixture), IClassFixture<PublicPollTestsFixture>
 {
-    TestsFixture Fixture => classFixture.TestsFixture;
-    ITelegramBotClient BotClient => Fixture.BotClient;
-
     [OrderedFact(
         "Should send public poll with multiple answers")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPoll)]
     public async Task Should_Send_Non_Anonymous_Poll_With_Multiple_Answers()
     {
-        Message message = await Fixture.BotClient.SendPollAsync(
+        Message message = await Fixture.BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Pick your team",
             options: ["Aragorn", "Galadriel", "Frodo"],
@@ -86,9 +84,9 @@ public class PublicPollTests(PublicPollTestsFixture classFixture) : IClassFixtur
         // doesn't match up with the previously received poll answer
         await Task.Delay(TimeSpan.FromSeconds(5));
 
-        Poll closedPoll = await BotClient.StopPollAsync(
+        Poll closedPoll = await BotClient.StopPoll(
             chatId: classFixture.OriginalPollMessage.Chat,
-            messageId: classFixture.OriginalPollMessage.MessageId
+            messageId: classFixture.OriginalPollMessage.Id
         );
 
         Assert.Equal(classFixture.OriginalPollMessage.Poll!.Id, closedPoll.Id);

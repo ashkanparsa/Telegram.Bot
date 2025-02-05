@@ -2,15 +2,7 @@ namespace Telegram.Bot.Serialization;
 
 internal static class UnixDateTimeConverterUtil
 {
-    private static readonly DateTime UnixEpoch = new(
-        year: 1970,
-        month: 1,
-        day: 1,
-        hour: 0,
-        minute: 0,
-        second: 0,
-        kind: DateTimeKind.Utc
-    );
+    private static readonly DateTime UnixEpoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     internal static DateTime Read(ref Utf8JsonReader reader, Type typeToConvert)
     {
@@ -19,7 +11,7 @@ internal static class UnixDateTimeConverterUtil
             return UnixEpoch.AddSeconds(seconds);
         if (seconds == 0)
             return default; // easier to test than 1/1/1970
-        throw new JsonException($"Cannot convert value that is before Unix epoch of 00:00:00 UTC on 1 January 1970 to {typeToConvert:CultureInfo.InvariantCulture}.");
+        throw new JsonException($"Cannot convert value that is before Unix epoch of 00:00:00 UTC on 1 January 1970 to {typeToConvert}.");
     }
 
     internal static void Write(Utf8JsonWriter writer, DateTime value)

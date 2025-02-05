@@ -1,13 +1,12 @@
-﻿// The original implementation is taken from there
+// The original implementation is taken from there
 // https://github.com/dotnet/runtime/issues/72604#issuecomment-1932302266
 
-using System.Collections.Generic;
 using System.Reflection;
 
 namespace Telegram.Bot.Serialization;
 
 /// <summary>
-/// A temporary hack to support deserializing JSON payloads that use polymorphism but don't specify $type as the first field.
+/// Supports deserializing JSON payloads that use polymorphism but don't specify $type as the first field.
 /// Modified from https://github.com/dotnet/runtime/issues/72604#issuecomment-1440708052.
 /// </summary>
 internal sealed class PolymorphicJsonConverter<T> : JsonConverter<T>
@@ -15,12 +14,10 @@ internal sealed class PolymorphicJsonConverter<T> : JsonConverter<T>
     private readonly string _discriminatorPropName;
     private readonly Dictionary<string, Type> _discriminatorToSubtype = [];
 
-    public PolymorphicJsonConverter(JsonSerializerOptions options)
+    public PolymorphicJsonConverter()
     {
-        var attr = typeof(T).GetCustomAttribute<CustomJsonPolymorphicAttribute>();
-        _discriminatorPropName = options.PropertyNamingPolicy
-            ?.ConvertName(attr?.TypeDiscriminatorPropertyName ?? "$type")
-            ?? "$type";
+        var attr = typeof(T).GetCustomAttribute<CustomJsonPolymorphicAttribute>()!;
+        _discriminatorPropName = JsonNamingPolicy.SnakeCaseLower.ConvertName(attr.TypeDiscriminatorPropertyName ?? "$type");
 
         foreach (var subtype in typeof(T).GetCustomAttributes<CustomJsonDerivedTypeAttribute>())
         {
@@ -52,7 +49,7 @@ internal sealed class PolymorphicJsonConverter<T> : JsonConverter<T>
         if (!_discriminatorToSubtype.TryGetValue(typeName, out var type))
             throw new JsonException($"Unknown type: {typeName}");
 
-        return (T) JsonSerializer.Deserialize(ref reader, type, options)!;
+        return (T)JsonSerializer.Deserialize(ref reader, type, options)!;
     }
 
     public override void Write(

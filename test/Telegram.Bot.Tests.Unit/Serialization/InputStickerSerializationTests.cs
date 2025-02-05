@@ -2,7 +2,6 @@ using System.IO;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
-using JsonSerializerOptionsProvider = Telegram.Bot.Serialization.JsonSerializerOptionsProvider;
 
 namespace Telegram.Bot.Tests.Unit.Serialization;
 
@@ -21,13 +20,13 @@ public class InputStickerSerializationTests
             Format = StickerFormat.Static
         };
 
-        string json = JsonSerializer.Serialize(inputSticker, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(inputSticker, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
 
         Assert.Equal(3, j.Count);
-        Assert.Equal($"attach://{fileName}", (string?)j["sticker"]);
+        Assert.Equal($"attach://0", (string?)j["sticker"]);
         Assert.Equal("static", (string?)j["format"]);
 
         JsonNode? je = j["emoji_list"];
@@ -51,7 +50,7 @@ public class InputStickerSerializationTests
             Format = StickerFormat.Static,
         };
 
-        string json = JsonSerializer.Serialize(inputStickerFileId, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(inputStickerFileId, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -81,7 +80,7 @@ public class InputStickerSerializationTests
             Format = StickerFormat.Static,
         };
 
-        string json = JsonSerializer.Serialize(inputStickerFileUrl, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(inputStickerFileUrl, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
 

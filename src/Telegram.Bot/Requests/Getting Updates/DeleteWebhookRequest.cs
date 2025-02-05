@@ -1,21 +1,9 @@
-﻿namespace Telegram.Bot.Requests;
+namespace Telegram.Bot.Requests;
 
-/// <summary>
-/// Use this method to remove webhook integration if you decide to switch back to <see cref="TelegramBotClientExtensions.GetUpdatesAsync">GetUpdates</see>.<para>Returns: </para>
-/// </summary>
-public partial class DeleteWebhookRequest : RequestBase<bool>
+/// <summary>Use this method to remove webhook integration if you decide to switch back to <see cref="TelegramBotClientExtensions.GetUpdates">GetUpdates</see>.<para>Returns: </para></summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public partial class DeleteWebhookRequest() : RequestBase<bool>("deleteWebhook")
 {
-    /// <summary>
-    /// Pass <see langword="true"/> to drop all pending updates
-    /// </summary>
-    [JsonInclude]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    /// <summary>Pass <see langword="true"/> to drop all pending updates</summary>
     public bool DropPendingUpdates { get; set; }
-
-    /// <summary>
-    /// Instantiates a new <see cref="DeleteWebhookRequest"/>
-    /// </summary>
-    public DeleteWebhookRequest()
-        : base("deleteWebhook")
-    { }
 }

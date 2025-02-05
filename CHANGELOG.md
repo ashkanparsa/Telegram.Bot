@@ -1,11 +1,18 @@
-# Changelog
+## [v21.*] - 2024-06-22
 
+Starting with version 21.x, changes are documented here:  
+https://telegrambots.github.io/book/migrate
+
+We keep this library updated to the latest version of Telegram Bot API.  
+See the [latest changes to Bot API here](https://core.telegram.org/bots/api#recent-changes)
+
+
+<!--
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-<!--
 
 ## [Unreleased]
 
@@ -21,36 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 <!-- markdownlint-configure-file { "MD024": false } -->
 
-### Rationalization of the library
+## [v20.0.0] - 2024-06-15
 
-These changes are aimed at making your life simpler and should not break existing code and instead ease the migration from previous versions:
-
-- `ReplyParameters`: just pass an `int` when you just want to reply to a message  
-_(so the new replyParameters: parameter behaves the same as the old replyToMessageId: parameter)_
-- `LinkPreviewOptions`: just pass a `bool` (true) to disable link preview  
-_(so the new linkPreviewOptions: parameter behaves the same as the old disableWebPagePreview: parameter)_
-- `InputFile`: just pass a `string`/`Stream` for file_id/url/stream content _(as was possible in previous versions of Telegram.Bot)_
-- `InputMedia*`: just pass an `InputFile` when you don't need to associate caption or such
-- `MessageId`: auto-converts to/from `int` (and also from `Message`)
-- `ReactionType`: just pass a `string` when you want to send an emoji
-- `ReactionType`: just pass a `long` when you want to send a custom emoji (id)
-- Some other obvious implicit conversion operators for structures containing a single property
-- No more enforcing `init;` properties, so you can adjust the content of fields as you wish or modify a structure returned by the API _(before passing it back to the API if you want)_
-- Not using the annoying `MaybeInaccessibleMessage`, you would just get a `Message` of type Unknown with Date==default if inaccessible
-- Removed many [Obsolete] tags for things that still simplify your code
-- Turned many `bool?` into normal `bool` (`false` is the same as `null`)
-- Turned `ParseMode?` back into `ParseMode` (using `default` or `ParseMode.None` when unset)
-- Restored some `MessageType` enum value that were removed (renamed) recently (easier compatibility)
-- Recently added methods based on request structures are now obsolete and will be removed soon. Favor parameter-based methods instead.  
-If you already changed your code to use these structures and don't want to switch back, you can still use the `MakeRequestAsync` method to send them.
-
-## [Unreleased]
-
-> [Bot API 7.0](https://core.telegram.org/bots/api#december-29-2023) (December 29, 2023)
-> [Bot API 7.1](https://core.telegram.org/bots/api#february-16-2024) (February 16, 2024)
-> [Bot API 7.2](https://core.telegram.org/bots/api#march-31-2024) (March 31, 2024)
-> [Bot API 7.3](https://core.telegram.org/bots/api#may-6-2024) (May 6, 2024)
-> [Bot Api 7.4](https://core.telegram.org/bots/api#may-28-2024) (May 28, 2024)
+> [Bot API 7.0](https://core.telegram.org/bots/api#december-29-2023) (December 29, 2023)  
+> [Bot API 7.1](https://core.telegram.org/bots/api#february-16-2024) (February 16, 2024)  
+> [Bot API 7.2](https://core.telegram.org/bots/api#march-31-2024) (March 31, 2024)  
+> [Bot API 7.3](https://core.telegram.org/bots/api#may-6-2024) (May 6, 2024)  
+> [Bot Api 7.4](https://core.telegram.org/bots/api#may-28-2024) (May 28, 2024)  
 
 ### Added
 
@@ -253,7 +237,7 @@ and `ForwardDate` replaced with the field `ForwardOrigin` of type `MessageOrigin
   and `ForwardDate` from type `Message`
 - Most optional properties are removed from the type `Chat`, all of them are now in `ChatFullInfo` type
 
-## [v20.0.0] - Unreleased
+## [Unreleased] - 2023-09-23
 
 > [Bot API 6.9](https://core.telegram.org/bots/api#september-22-2023) (September 22, 2023)
 
@@ -497,11 +481,9 @@ such objects will contain the user `136817688` (`@Channel_Bot`).
 
 ## [v19.0.0-preview.1] - 2022-12-03
 
-> [Bot API 6.1](https://core.telegram.org/bots/api#june-20-2022) (June 20, 2022)
-
-> [Bot API 6.2](https://core.telegram.org/bots/api#august-12-2022) (August 12, 2022)
-
-> [Bot API 6.3](https://core.telegram.org/bots/api#november-5-2022) (November 5, 2022)
+> [Bot API 6.1](https://core.telegram.org/bots/api#june-20-2022) (June 20, 2022)  
+> [Bot API 6.2](https://core.telegram.org/bots/api#august-12-2022) (August 12, 2022)  
+> [Bot API 6.3](https://core.telegram.org/bots/api#november-5-2022) (November 5, 2022)  
 
 ### Added
 
@@ -663,11 +645,9 @@ such objects will contain the user `136817688` (`@Channel_Bot`).
 
 ## [v18.0.0-alpha.1] - 2022-02-13
 
-> [Bot API 5.7](https://core.telegram.org/bots/api#january-31-2022) (January 31, 2022)
-
-> [Bot API 5.6](https://core.telegram.org/bots/api#december-30-2021) (December 30, 2021)
-
-> [Bot API 5.5](https://core.telegram.org/bots/api#december-7-2021) (December 7, 2021)
+> [Bot API 5.7](https://core.telegram.org/bots/api#january-31-2022) (January 31, 2022)  
+> [Bot API 5.6](https://core.telegram.org/bots/api#december-30-2021) (December 30, 2021)  
+> [Bot API 5.5](https://core.telegram.org/bots/api#december-7-2021) (December 7, 2021)  
 
 ### Changed
 
@@ -943,7 +923,7 @@ such objects will contain the user `136817688` (`@Channel_Bot`).
 
 ## [v16.0.0-alpha.1] - 2021-05-01
 
-> [Bot API 5.1](https://core.telegram.org/bots/api#march-9-2021) (March 9, 2021)
+> [Bot API 5.1](https://core.telegram.org/bots/api#march-9-2021) (March 9, 2021)  
 > [Bot API 5.0](https://core.telegram.org/bots/api#november-4-2020) (November 4, 2020)
 
 ### Added

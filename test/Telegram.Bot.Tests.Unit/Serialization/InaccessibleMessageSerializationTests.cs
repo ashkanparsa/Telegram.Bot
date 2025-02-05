@@ -1,7 +1,6 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
-using JsonSerializerOptionsProvider = Telegram.Bot.Serialization.JsonSerializerOptionsProvider;
 
 namespace Telegram.Bot.Tests.Unit.Serialization;
 
@@ -24,7 +23,7 @@ public class InaccessibleMessageSerializationTests
             },
             "message": {
                 "chat": {
-                    "id": 1234567,
+                    "id": 9999999999,
                     "first_name": "Telegram_Bots",
                     "last_name": null,
                     "username": "TelegramBots",
@@ -38,7 +37,7 @@ public class InaccessibleMessageSerializationTests
         }
         """;
 
-        CallbackQuery? query = JsonSerializer.Deserialize<CallbackQuery>(json, JsonSerializerOptionsProvider.Options);
+        CallbackQuery? query = JsonSerializer.Deserialize<CallbackQuery>(json, JsonBotAPI.Options);
 
         Assert.NotNull(query);
         Assert.Equal("12345", query.Id);
@@ -47,7 +46,8 @@ public class InaccessibleMessageSerializationTests
         Assert.NotNull(query.From?.Username);
 
         Assert.NotNull(query.Message);
-        Assert.Equal(9999, query.Message.MessageId);
+        Assert.Equal(9999, query.Message.Id);
+        Assert.Equal(9999999999L, query.Message.Chat.Id);
         Assert.Equal(default, query.Message.Date);
         Assert.Equal(MessageType.Unknown, query.Message.Type);
         Assert.NotNull(query.Message.Chat?.Username);

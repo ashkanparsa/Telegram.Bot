@@ -9,17 +9,15 @@ namespace Telegram.Bot.Tests.Integ.Polls;
 
 [Collection(Constants.TestCollections.NativePolls)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class SelfStoppingPollTests(SelfStoppingPollTestsFixture fixture) : IClassFixture<SelfStoppingPollTestsFixture>
+public class SelfStoppingPollTests(SelfStoppingPollTestsFixture fixture)
+    : TestClass(fixture.TestsFixture), IClassFixture<SelfStoppingPollTestsFixture>
 {
-    TestsFixture Fixture => fixture.TestsFixture;
-    ITelegramBotClient BotClient => Fixture.BotClient;
-
     [OrderedFact(
         "Should send self closing anonymous poll by period")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPoll)]
     public async Task Should_Send_Self_Closing_Poll_Anonymous_Poll_By_Period()
     {
-        Message message = await BotClient.SendPollAsync(
+        Message message = await BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Who shot first?",
             options: ["Han Solo", "Greedo", "I don't care"],
@@ -74,7 +72,7 @@ public class SelfStoppingPollTests(SelfStoppingPollTestsFixture fixture) : IClas
     {
         DateTime closeDate = DateTime.UtcNow.AddSeconds(8);
 
-        Message message = await BotClient.SendPollAsync(
+        Message message = await BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Who shot first?",
             options: ["Han Solo", "Greedo", "I don't care"],

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Telegram.Bot.Requests;
+using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types.Payments;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -117,7 +117,7 @@ public class PaymentsBuilder
 
     public PaymentsBuilder WithPaymentProviderToken(string paymentsProviderToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(paymentsProviderToken);
+        if (_currency != "XTR") ArgumentException.ThrowIfNullOrWhiteSpace(paymentsProviderToken);
         _paymentsProviderToken = paymentsProviderToken;
         return this;
     }
@@ -174,26 +174,26 @@ public class PaymentsBuilder
 
     public int GetTotalAmount() =>
         (_product?.ProductPrices.Sum(price => price.Amount) ?? 0) +
-        _shippingOptions.Sum(x => x.Prices.Sum(p => p.Amount));
+        _shippingOptions.Take(1).Sum(x => x.Prices.Sum(p => p.Amount));
 
     public int GetTotalAmountWithoutShippingCost() => _product?.ProductPrices.Sum(price => price.Amount) ?? 0;
 
-    public async Task<Types.Message> MakeInvoiceRequest(ITelegramBotClient botClient)
+    public async Task<Types.Message> MakeInvoiceRequest(TestsFixture fixture)
     {
         ArgumentNullException.ThrowIfNull(_product);
-        ArgumentException.ThrowIfNullOrWhiteSpace(_paymentsProviderToken);
-        ArgumentNullException.ThrowIfNull(_chatId);
         ArgumentException.ThrowIfNullOrWhiteSpace(_currency);
+        if (_currency != "XTR") ArgumentException.ThrowIfNullOrWhiteSpace(_paymentsProviderToken);
+        ArgumentNullException.ThrowIfNull(_chatId);
         ArgumentException.ThrowIfNullOrWhiteSpace(_payload);
 
-        return await botClient.SendInvoiceAsync(
+        return await fixture.BotClient.SendInvoice(
             chatId: _chatId.Value,
             title: _product.Title,
             description: _product.Description,
             payload: _payload,
-            providerToken: _paymentsProviderToken,
             currency: _currency,
             prices: _product.ProductPrices,
+            providerToken: _paymentsProviderToken,
             photoUrl: _product.PhotoUrl,
             photoWidth: _product.PhotoWidth,
             photoHeight: _product.PhotoHeight,
@@ -212,14 +212,14 @@ public class PaymentsBuilder
         );
     }
 
-    public async Task MakeShippingQueryRequest(ITelegramBotClient botClient, string shippingQueryId, string? errorMessage = default)
+    public async Task MakeShippingQueryRequest(TestsFixture fixture, string shippingQueryId, string? errorMessage = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(shippingQueryId);
 
         if (errorMessage is null)
-            await botClient.AnswerShippingQueryAsync(shippingQueryId, _shippingOptions);
+            await fixture.BotClient.AnswerShippingQuery(shippingQueryId, _shippingOptions);
         else
-            await botClient.AnswerShippingQueryAsync(shippingQueryId, errorMessage);
+            await fixture.BotClient.AnswerShippingQuery(shippingQueryId, errorMessage);
     }
 
     public PaymentsBuilder WithProduct(Action<ProductBuilder> builder)

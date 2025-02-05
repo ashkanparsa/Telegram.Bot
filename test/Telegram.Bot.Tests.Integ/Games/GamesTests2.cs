@@ -11,16 +11,14 @@ namespace Telegram.Bot.Tests.Integ.Games;
 
 [Collection(Constants.TestCollections.Games2)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class GamesTests2(TestsFixture fixture, GamesFixture classFixture) : IClassFixture<GamesFixture>
+public class GamesTests2(TestsFixture fixture, GamesFixture classFixture) : TestClass(fixture), IClassFixture<GamesFixture>
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should send game")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendGame)]
     public async Task Should_Send_Game()
     {
-        Message gameMessage = await BotClient.SendGameAsync(
-            chatId: fixture.SupergroupChat.Id,
+        Message gameMessage = await BotClient.SendGame(
+            chatId: Fixture.SupergroupChat.Id,
             gameShortName: classFixture.GameShortName
         );
 
@@ -42,8 +40,8 @@ public class GamesTests2(TestsFixture fixture, GamesFixture classFixture) : ICla
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendGame)]
     public async Task Should_Send_Game_With_ReplyMarkup()
     {
-        Message gameMessage = await BotClient.SendGameAsync(
-            chatId: fixture.SupergroupChat.Id,
+        Message gameMessage = await BotClient.SendGame(
+            chatId: Fixture.SupergroupChat.Id,
             gameShortName: classFixture.GameShortName,
             replyMarkup: new[]
             {
@@ -67,10 +65,10 @@ public class GamesTests2(TestsFixture fixture, GamesFixture classFixture) : ICla
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetGameHighScores)]
     public async Task Should_Get_High_Scores()
     {
-        GameHighScore[] highScores = await BotClient.GetGameHighScoresAsync(
+        GameHighScore[] highScores = await BotClient.GetGameHighScores(
             userId: classFixture.Player.Id,
-            chatId: fixture.SupergroupChat.Id,
-            messageId: classFixture.GameMessage.MessageId
+            chatId: Fixture.SupergroupChat.Id,
+            messageId: classFixture.GameMessage.Id
         );
 
         Assert.All(highScores, hs => Assert.True(hs.Position > 0));
@@ -96,23 +94,23 @@ public class GamesTests2(TestsFixture fixture, GamesFixture classFixture) : ICla
 
         int newScore = oldScore + 1 + new Random().Next(3);
 
-        await fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             $"Changing score from {oldScore} to {newScore} for {classFixture.Player.Username!.Replace("_", @"\_")}."
         );
 
-        Message gameMessage = await BotClient.SetGameScoreAsync(
+        Message gameMessage = await BotClient.SetGameScore(
             userId: playerId,
             score: newScore,
-            chatId: fixture.SupergroupChat.Id,
-            messageId: classFixture.GameMessage.MessageId
+            chatId: Fixture.SupergroupChat.Id,
+            messageId: classFixture.GameMessage.Id
         );
 
-        Assert.Equal(classFixture.GameMessage.MessageId, gameMessage.MessageId);
+        Assert.Equal(classFixture.GameMessage.Id, gameMessage.Id);
 
         // update the high scores cache
         await Task.Delay(1_000);
-        classFixture.HighScores = await BotClient.GetGameHighScoresAsync(
-            playerId, fixture.SupergroupChat.Id, gameMessage.MessageId
+        classFixture.HighScores = await BotClient.GetGameHighScores(
+            playerId, Fixture.SupergroupChat.Id, gameMessage.Id
         );
     }
 
@@ -124,15 +122,15 @@ public class GamesTests2(TestsFixture fixture, GamesFixture classFixture) : ICla
         int oldScore = classFixture.HighScores.Single(highScore => highScore.User.Id == playerId).Score;
         int newScore = oldScore - 1;
 
-        await fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             $"Changing score from {oldScore} to {newScore} for {classFixture.Player.Username!.Replace("_", @"\_")}."
         );
 
-        Message gameMessage = await BotClient.SetGameScoreAsync(
+        Message gameMessage = await BotClient.SetGameScore(
             userId: playerId,
             score: newScore,
-            chatId: fixture.SupergroupChat.Id,
-            messageId: classFixture.GameMessage.MessageId,
+            chatId: Fixture.SupergroupChat.Id,
+            messageId: classFixture.GameMessage.Id,
             force: true
         );
 

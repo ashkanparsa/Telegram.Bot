@@ -1,7 +1,6 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
-using Telegram.Bot.Exceptions;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Xunit;
@@ -10,15 +9,13 @@ namespace Telegram.Bot.Tests.Integ.Getting_Updates;
 
 [Collection(Constants.TestCollections.GettingUpdates)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class GettingUpdatesTests(TestsFixture fixture)
+public class GettingUpdatesTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should pass API Token test with valid token")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetMe)]
     public async Task Should_Pass_Test_Api_Token()
     {
-        bool result = await BotClient.TestApiAsync();
+        bool result = await BotClient.TestApi();
 
         Assert.True(result);
     }
@@ -29,13 +26,14 @@ public class GettingUpdatesTests(TestsFixture fixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetMe)]
     public async Task Should_Fail_Test_Api_Token()
     {
-        ITelegramBotClient botClient = new TelegramBotClient(options: new("0:1this_is_an-invalid-token_for_tests"));
-        bool result = await botClient.TestApiAsync();
+        var botClient = Fixture.CreateClient(new() { ApiToken = "0:1this_is_an-invalid-token_for_tests",
+            ClientApiToken = Fixture.Configuration.ClientApiToken });
+        bool result = await botClient.TestApi();
 
         Assert.False(result);
 
         //ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(() =>
-        //    botClient.TestApiAsync()
+        //    botClient.TestApi()
         //);
         //Assert.IsType<ApiRequestException>(exception);
         //Assert.Equal(404, exception.ErrorCode);
@@ -46,10 +44,9 @@ public class GettingUpdatesTests(TestsFixture fixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetMe)]
     public async Task Should_Test_Bad_BotToken()
     {
-        ITelegramBotClient botClient = new TelegramBotClient(
-            options: new("123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11")
-        );
-        bool result = await botClient.TestApiAsync();
+        var botClient = Fixture.CreateClient(new() { ApiToken = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+            ClientApiToken = Fixture.Configuration.ClientApiToken });
+        bool result = await botClient.TestApi();
 
         Assert.False(result);
     }
@@ -58,11 +55,21 @@ public class GettingUpdatesTests(TestsFixture fixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetMe)]
     public async Task Should_Get_Bot_User()
     {
-        User botUser = await BotClient.GetMeAsync();
+        User botUser = await BotClient.GetMe();
 
         Assert.NotNull(botUser);
         Assert.NotNull(botUser.Username);
         Assert.True(botUser.IsBot);
         Assert.EndsWith("bot", botUser.Username!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [OrderedFact("Should be aborted by global cancellation token")]
+    [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetMe)]
+    public async Task Should_Abort_Request_by_GlobalCancelToken()
+    {
+        CancellationTokenSource globalCT = new();
+        var botClient = Fixture.CreateClient(Fixture.Configuration, globalCT.Token);
+        globalCT.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await botClient.GetUpdates());
     }
 }

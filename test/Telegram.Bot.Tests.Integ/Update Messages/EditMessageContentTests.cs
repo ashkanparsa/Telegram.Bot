@@ -13,23 +13,21 @@ namespace Telegram.Bot.Tests.Integ.Update_Messages;
 [Collection(Constants.TestCollections.EditMessage)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class EditMessageContentTests(TestsFixture fixture)
+public class EditMessageContentTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should edit an inline message's text")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.AnswerInlineQuery)]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageText)]
     public async Task Should_Edit_Inline_Message_Text()
     {
-        await fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             "Starting the inline query with this message...",
             startInlineQuery: true
         );
 
         #region Answer Inline Query with an Article
 
-        Update inlineQUpdate = await fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
+        Update inlineQUpdate = await Fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
         Assert.NotNull(inlineQUpdate.InlineQuery);
 
         const string originalMessagePrefix = "original\n";
@@ -56,11 +54,11 @@ public class EditMessageContentTests(TestsFixture fixture)
             }
         ];
 
-        await BotClient.AnswerInlineQueryAsync(inlineQUpdate.InlineQuery.Id, inlineQueryResults, 0);
+        await BotClient.AnswerInlineQuery(inlineQUpdate.InlineQuery.Id, inlineQueryResults, 0);
 
         #endregion
 
-        Update callbackQUpdate = await fixture.UpdateReceiver
+        Update callbackQUpdate = await Fixture.UpdateReceiver
             .GetCallbackQueryUpdateAsync(data: data);
 
         Assert.NotNull(callbackQUpdate.CallbackQuery);
@@ -69,7 +67,7 @@ public class EditMessageContentTests(TestsFixture fixture)
         const string modifiedMessagePrefix = "✌ modified 👌\n";
         messageText = $"{modifiedMessagePrefix}{string.Join("\n", entityValueMappings.Select(tuple => tuple.Value))}";
 
-        await BotClient.EditMessageTextAsync(
+        await BotClient.EditMessageText(
             inlineMessageId: callbackQUpdate.CallbackQuery.InlineMessageId,
             text: messageText,
             parseMode: ParseMode.Html
@@ -81,14 +79,14 @@ public class EditMessageContentTests(TestsFixture fixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageReplyMarkup)]
     public async Task Should_Edit_Inline_Message_Markup()
     {
-        await fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             "Starting the inline query with this message...",
             startInlineQuery: true
         );
 
         #region Answer Inline Query with an Article
 
-        Update inlineQUpdate = await fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
+        Update inlineQUpdate = await Fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
         Assert.NotNull(inlineQUpdate.InlineQuery);
 
         string data = "change-me" + new Random().Next(2_000);
@@ -114,17 +112,17 @@ public class EditMessageContentTests(TestsFixture fixture)
             }
         ];
 
-        await BotClient.AnswerInlineQueryAsync(inlineQUpdate.InlineQuery.Id, inlineQueryResults, 0);
+        await BotClient.AnswerInlineQuery(inlineQUpdate.InlineQuery.Id, inlineQueryResults, 0);
 
         #endregion
 
-        Update callbackQUpdate = await fixture.UpdateReceiver
+        Update callbackQUpdate = await Fixture.UpdateReceiver
             .GetCallbackQueryUpdateAsync(data: data);
 
         Assert.NotNull(callbackQUpdate.CallbackQuery);
         Assert.NotNull(callbackQUpdate.CallbackQuery.InlineMessageId);
 
-        await BotClient.EditMessageReplyMarkupAsync(
+        await BotClient.EditMessageReplyMarkup(
             inlineMessageId: callbackQUpdate.CallbackQuery.InlineMessageId,
             replyMarkup: "✌ Edited 👌"
         );
@@ -135,14 +133,14 @@ public class EditMessageContentTests(TestsFixture fixture)
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.EditMessageCaption)]
     public async Task Should_Edit_Inline_Message_Caption()
     {
-        await fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             "Starting the inline query with this message...",
             startInlineQuery: true
         );
 
         #region Answer Inline Query with an Article
 
-        Update inlineQUpdate = await fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
+        Update inlineQUpdate = await Fixture.UpdateReceiver.GetInlineQueryUpdateAsync();
         Assert.NotNull(inlineQUpdate.InlineQuery);
 
         string data = "change-me" + new Random().Next(2_000);
@@ -164,17 +162,17 @@ public class EditMessageContentTests(TestsFixture fixture)
             }
         ];
 
-        await BotClient.AnswerInlineQueryAsync(inlineQUpdate.InlineQuery.Id, inlineQueryResults, 0);
+        await BotClient.AnswerInlineQuery(inlineQUpdate.InlineQuery.Id, inlineQueryResults, 0);
 
         #endregion
 
-        Update callbackQUpdate = await fixture.UpdateReceiver
+        Update callbackQUpdate = await Fixture.UpdateReceiver
             .GetCallbackQueryUpdateAsync(data: data);
 
         Assert.NotNull(callbackQUpdate.CallbackQuery);
         Assert.NotNull(callbackQUpdate.CallbackQuery.InlineMessageId);
 
-        await BotClient.EditMessageCaptionAsync(
+        await BotClient.EditMessageCaption(
             inlineMessageId: callbackQUpdate.CallbackQuery.InlineMessageId,
             caption: "_Caption is edited_ 👌",
             parseMode: ParseMode.Markdown

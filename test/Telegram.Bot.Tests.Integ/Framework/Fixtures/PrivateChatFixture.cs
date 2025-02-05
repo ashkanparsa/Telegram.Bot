@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
@@ -31,7 +30,7 @@ public class PrivateChatFixture : AsyncLifetimeFixture
         long? chatId = testsFixture.Configuration.TesterPrivateChatId;
         if (chatId.HasValue)
         {
-            chat = await testsFixture.BotClient.GetChatAsync(chatId);
+            chat = await testsFixture.BotClient.GetChat(chatId);
         }
         else
         {

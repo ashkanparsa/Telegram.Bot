@@ -1,7 +1,6 @@
-﻿using Telegram.Bot.Types;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
-using JsonSerializerOptionsProvider = Telegram.Bot.Serialization.JsonSerializerOptionsProvider;
 
 namespace Telegram.Bot.Tests.Unit.Serialization;
 
@@ -10,7 +9,7 @@ public class MessageOriginSerializationTests
     [Fact]
     public void Should_Serialize_MessageOriginUser()
     {
-        MessageOriginUser origin = new()
+        MessageOrigin origin = new MessageOriginUser()
         {
             SenderUser = new()
             {
@@ -24,7 +23,7 @@ public class MessageOriginSerializationTests
             Date = new(2024, 2, 16, 18, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        string json = JsonSerializer.Serialize(origin, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(origin, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -48,13 +47,13 @@ public class MessageOriginSerializationTests
     [Fact]
     public void Should_Serialize_MessageOriginHidden()
     {
-        MessageOriginHiddenUser origin = new()
+        MessageOrigin origin = new MessageOriginHiddenUser()
         {
             SenderUserName = "test_bot",
             Date = new(2024, 2, 16, 18, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        string json = JsonSerializer.Serialize(origin, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(origin, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -73,7 +72,7 @@ public class MessageOriginSerializationTests
     [Fact]
     public void Should_Serialize_MessageOriginChat()
     {
-        MessageOriginChat origin = new()
+        MessageOrigin origin = new MessageOriginChat()
         {
             SenderChat = new()
             {
@@ -85,7 +84,7 @@ public class MessageOriginSerializationTests
             Date = new(2024, 2, 16, 18, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        string json = JsonSerializer.Serialize(origin, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(origin, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -107,7 +106,7 @@ public class MessageOriginSerializationTests
     [Fact]
     public void Should_Serialize_MessageOriginChannel()
     {
-        MessageOriginChannel origin = new()
+        MessageOrigin origin = new MessageOriginChannel()
         {
             Chat = new()
             {
@@ -120,7 +119,7 @@ public class MessageOriginSerializationTests
             Date = new(2024, 2, 16, 18, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        string json = JsonSerializer.Serialize(origin, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(origin, JsonBotAPI.Options);
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
@@ -160,7 +159,7 @@ public class MessageOriginSerializationTests
             }
             """;
 
-        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonSerializerOptionsProvider.Options);
+        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonBotAPI.Options);
         Assert.NotNull(messageOrigin);
 
         MessageOriginUser originUser = Assert.IsAssignableFrom<MessageOriginUser>(messageOrigin);
@@ -189,7 +188,7 @@ public class MessageOriginSerializationTests
             }
             """;
 
-        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonSerializerOptionsProvider.Options);
+        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonBotAPI.Options);
         Assert.NotNull(messageOrigin);
 
         MessageOriginHiddenUser originHiddenUser = Assert.IsAssignableFrom<MessageOriginHiddenUser>(messageOrigin);
@@ -218,7 +217,7 @@ public class MessageOriginSerializationTests
             """;
 
 
-        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonSerializerOptionsProvider.Options);
+        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonBotAPI.Options);
         Assert.NotNull(messageOrigin);
 
         MessageOriginChat originChat = Assert.IsAssignableFrom<MessageOriginChat>(messageOrigin);
@@ -251,7 +250,7 @@ public class MessageOriginSerializationTests
             }
             """;
 
-        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonSerializerOptionsProvider.Options);
+        MessageOrigin? messageOrigin = JsonSerializer.Deserialize<MessageOrigin>(origin, JsonBotAPI.Options);
         Assert.NotNull(messageOrigin);
 
         MessageOriginChannel originChannel = Assert.IsAssignableFrom<MessageOriginChannel>(messageOrigin);

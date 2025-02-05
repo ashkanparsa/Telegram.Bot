@@ -2,7 +2,6 @@
 
 using Telegram.Bot.Types.Enums;
 using Xunit;
-using JsonSerializerOptionsProvider = Telegram.Bot.Serialization.JsonSerializerOptionsProvider;
 
 namespace Telegram.Bot.Tests.Unit.EnumConverter;
 
@@ -16,9 +15,9 @@ public class ParseModeConverterTests
     public void Should_Convert_ParseMode_To_String(ParseMode parseMode, string value)
     {
         SendMessageRequest sendMessageRequest = new() { ParseMode = parseMode };
-        string expectedResult = @$"{{""parse_mode"":""{value}""}}";
+        string expectedResult = parseMode == 0 ? "{}" : @$"{{""parse_mode"":""{value}""}}";
 
-        string result = JsonSerializer.Serialize(sendMessageRequest, JsonSerializerOptionsProvider.Options);
+        string result = JsonSerializer.Serialize(sendMessageRequest, JsonBotAPI.Options);
 
         Assert.Equal(expectedResult, result);
     }
@@ -33,21 +32,17 @@ public class ParseModeConverterTests
         SendMessageRequest expectedResult = new() { ParseMode = parseMode };
         string jsonData = @$"{{""parse_mode"":""{value}""}}";
 
-        SendMessageRequest? result = JsonSerializer.Deserialize<SendMessageRequest>(jsonData, JsonSerializerOptionsProvider.Options);
+        SendMessageRequest? result = JsonSerializer.Deserialize<SendMessageRequest>(jsonData, JsonBotAPI.Options);
 
         Assert.NotNull(result);
         Assert.Equal(expectedResult.ParseMode, result.ParseMode);
     }
 
     [Fact]
-    public void Should_Return_Zero_For_Incorrect_ParseMode()
+    public void Should_Throw_For_Invalid_ParseMode()
     {
-        string jsonData = @$"{{""parse_mode"":""{int.MaxValue}""}}";
-
-        SendMessageRequest? result = JsonSerializer.Deserialize<SendMessageRequest>(jsonData, JsonSerializerOptionsProvider.Options);
-
-        Assert.NotNull(result);
-        Assert.Equal((ParseMode)0, result.ParseMode);
+        string jsonData = @$"{{""parse_mode"":""invalid value""}}";
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SendMessageRequest>(jsonData, JsonBotAPI.Options));
     }
 
 

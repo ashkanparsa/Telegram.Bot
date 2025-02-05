@@ -17,7 +17,7 @@ public enum UpdatePosition
     Single
 }
 
-public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? allowedUsernames)
+public class UpdateReceiver(TestsFixture fixture, IEnumerable<string>? allowedUsernames)
 {
     public List<string> AllowedUsernames { get; } = allowedUsernames?.ToList() ?? [];
 
@@ -37,7 +37,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var updates = await botClient.GetUpdatesAsync(
+                var updates = await fixture.BotClient.GetUpdates(
                     offset: offset,
                     allowedUpdates: Enum.GetValues<UpdateType>().Where(u => u != UpdateType.Unknown),
                     cancellationToken: cancellationToken
@@ -135,7 +135,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
         if (discardNewUpdates) { await DiscardNewUpdatesAsync(cancellationToken); }
 
         var updates = await GetUpdatesAsync(
-            predicate: u => (messageId is null || ((Message?)u.CallbackQuery?.Message)?.MessageId == messageId) &&
+            predicate: u => (messageId is null || ((Message?)u.CallbackQuery?.Message)?.Id == messageId) &&
                             (data is null || u.CallbackQuery?.Data == data),
             updateTypes: [UpdateType.CallbackQuery],
             cancellationToken: cancellationToken
@@ -208,7 +208,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
         CancellationToken cancellationToken,
         params UpdateType[] types)
     {
-        var updates = await botClient.GetUpdatesAsync(
+        var updates = await fixture.BotClient.GetUpdates(
             offset: offset,
             timeout: 120,
             allowedUpdates: types,
@@ -243,7 +243,7 @@ public class UpdateReceiver(ITelegramBotClient botClient, IEnumerable<string>? a
                 or UpdateType.ChannelPost
                 or UpdateType.EditedChannelPost => false,
             _ => throw new ArgumentOutOfRangeException(
-                paramName: nameof(update.Type),
+                paramName: "update.Type",
                 actualValue: update.Type,
                 message: $"Unsupported update type {update.Type}"
             ),

@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Xunit;
@@ -9,11 +8,9 @@ namespace Telegram.Bot.Tests.Integ.Other;
 
 [Collection(Constants.TestCollections.BotDescription)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class BotDescriptionTests(TestsFixture fixture) : IAsyncLifetime
+public class BotDescriptionTests(TestsFixture fixture) : TestClass(fixture), IAsyncLifetime
 {
     string _languageCode;
-
-    ITelegramBotClient BotClient => fixture.BotClient;
 
     [OrderedFact("Should set a new bot description")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SetMyDescription)]
@@ -21,7 +18,7 @@ public class BotDescriptionTests(TestsFixture fixture) : IAsyncLifetime
     {
         string description = "Test bot description";
 
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: description
         );
     }
@@ -32,13 +29,13 @@ public class BotDescriptionTests(TestsFixture fixture) : IAsyncLifetime
     {
         const string description = "Test bot description";
 
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: description
         );
 
         await Task.Delay(TimeSpan.FromSeconds(10));
 
-        BotDescription currentDescription = await fixture.BotClient.GetMyDescriptionAsync();
+        BotDescription currentDescription = await Fixture.BotClient.GetMyDescription();
 
         Assert.NotNull(currentDescription);
         Assert.Equal(description, currentDescription.Description);
@@ -50,22 +47,22 @@ public class BotDescriptionTests(TestsFixture fixture) : IAsyncLifetime
     {
         string description = "Test bot description";
 
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: description
         );
 
-        BotDescription setDescription = await fixture.BotClient.GetMyDescriptionAsync();
+        BotDescription setDescription = await Fixture.BotClient.GetMyDescription();
 
         Assert.NotNull(setDescription);
         Assert.Equal(description, setDescription.Description);
 
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: ""
         );
 
         await Task.Delay(TimeSpan.FromSeconds(10));
 
-        BotDescription currentDescription = await fixture.BotClient.GetMyDescriptionAsync();
+        BotDescription currentDescription = await Fixture.BotClient.GetMyDescription();
 
         Assert.NotNull(currentDescription.Description);
         Assert.Empty(currentDescription.Description);
@@ -79,14 +76,14 @@ public class BotDescriptionTests(TestsFixture fixture) : IAsyncLifetime
 
         _languageCode = "ru";
 
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: description,
             languageCode: _languageCode
         );
 
         await Task.Delay(TimeSpan.FromSeconds(10));
 
-        BotDescription newDescription = await fixture.BotClient.GetMyDescriptionAsync(languageCode: _languageCode);
+        BotDescription newDescription = await Fixture.BotClient.GetMyDescription(languageCode: _languageCode);
 
         Assert.NotNull(newDescription);
         Assert.Equal(description, newDescription.Description);
@@ -96,11 +93,11 @@ public class BotDescriptionTests(TestsFixture fixture) : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: ""
         );
 
-        await BotClient.SetMyDescriptionAsync(
+        await BotClient.SetMyDescription(
             description: "",
             languageCode: _languageCode
         );

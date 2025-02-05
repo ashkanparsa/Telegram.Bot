@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Xunit;
@@ -23,7 +22,7 @@ public class ChatMemberAdministrationTestFixture(TestsFixture testsFixture)
 
         if (testsFixture.Configuration.RegularGroupMemberId is {} userId)
         {
-            chat = await testsFixture.BotClient.GetChatAsync(userId);
+            chat = await testsFixture.BotClient.GetChat(userId);
         }
         else
         {
@@ -44,7 +43,7 @@ public class ChatMemberAdministrationTestFixture(TestsFixture testsFixture)
             $"[{chat.FirstName}](tg://user?id={chat.Id}) doesn't have a username.\n" +
             "❎ Failing tests...");
 
-        throw new ArgumentNullException(nameof(chat.Username), "Chat member doesn't have a username");
+        throw new InvalidOperationException("Chat member doesn't have a username");
     }
 
     public async Task InitializeAsync()

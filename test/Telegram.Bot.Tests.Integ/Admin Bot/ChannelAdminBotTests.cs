@@ -1,7 +1,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Types;
 using Xunit;
@@ -10,18 +9,16 @@ namespace Telegram.Bot.Tests.Integ.Admin_Bot;
 
 [Collection(Constants.TestCollections.ChannelAdminBots)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTestFixture classFixture)
-    : IClassFixture<ChannelAdminBotTestFixture>
+public class ChannelAdminBotTests(TestsFixture fixture, ChannelAdminBotTestFixture classFixture)
+    : TestClass(fixture), IClassFixture<ChannelAdminBotTestFixture>
 {
-    ITelegramBotClient BotClient => testsFixture.BotClient;
-
     #region 1. Changing Chat Title
 
     [OrderedFact("Should set chat title")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SetChatTitle)]
     public async Task Should_Set_Chat_Title()
     {
-        await BotClient.SetChatTitleAsync(
+        await BotClient.SetChatTitle(
             chatId: classFixture.Chat.Id,
             title: "Test Chat Title"
         );
@@ -35,7 +32,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SetChatDescription)]
     public async Task Should_Set_Chat_Description()
     {
-        await BotClient.SetChatDescriptionAsync(
+        await BotClient.SetChatDescription(
             chatId: classFixture.Chat.Id,
             description: "Test Chat Description"
         );
@@ -45,7 +42,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SetChatDescription)]
     public async Task Should_Delete_Chat_Description()
     {
-        await BotClient.SetChatDescriptionAsync(classFixture.Chat.Id);
+        await BotClient.SetChatDescription(classFixture.Chat.Id);
     }
 
     #endregion
@@ -56,14 +53,14 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.PinChatMessage)]
     public async Task Should_Pin_Message()
     {
-        Message msg = await BotClient.SendTextMessageAsync(
+        Message msg = await BotClient.SendMessage(
             chatId: classFixture.Chat.Id,
             text: "Description to pin"
         );
 
-        await BotClient.PinChatMessageAsync(
+        await BotClient.PinChatMessage(
             chatId: classFixture.Chat.Id,
-            messageId: msg.MessageId,
+            messageId: msg.Id,
             disableNotification: true
         );
 
@@ -76,7 +73,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     {
         Message pinnedMsg = classFixture.PinnedMessage;
 
-        ChatFullInfo chat = await BotClient.GetChatAsync(classFixture.Chat.Id);
+        ChatFullInfo chat = await BotClient.GetChat(classFixture.Chat.Id);
 
         Assert.NotNull(chat.PinnedMessage);
         Asserts.JsonEquals(pinnedMsg, chat.PinnedMessage);
@@ -86,14 +83,14 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.UnpinChatMessage)]
     public async Task Should_Unpin_Message()
     {
-        await BotClient.UnpinChatMessageAsync(classFixture.Chat.Id);
+        await BotClient.UnpinChatMessage(classFixture.Chat.Id);
     }
 
     [OrderedFact("Should get the chat info without a pinned message")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetChat)]
     public async Task Should_Get_Chat_With_No_Pinned_Message()
     {
-        ChatFullInfo chat = await BotClient.GetChatAsync(classFixture.Chat.Id);
+        ChatFullInfo chat = await BotClient.GetChat(classFixture.Chat.Id);
 
         Assert.Null(chat.PinnedMessage);
     }
@@ -106,8 +103,8 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SetChatPhoto)]
     public async Task Should_Set_Chat_Photo()
     {
-        await using Stream stream = System.IO.File.OpenRead(Constants.PathToFile.Photos.Logo);
-        await BotClient.SetChatPhotoAsync(
+        await using Stream stream = File.OpenRead(Constants.PathToFile.Photos.Logo);
+        await BotClient.WithStreams(stream).SetChatPhoto(
             chatId: classFixture.Chat.Id,
             photo: InputFile.FromStream(stream)
         );
@@ -117,7 +114,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.GetChat)]
     public async Task Should_Get_Chat_Photo()
     {
-        ChatFullInfo chat = await BotClient.GetChatAsync(classFixture.Chat.Id);
+        ChatFullInfo chat = await BotClient.GetChat(classFixture.Chat.Id);
 
         Assert.NotNull(chat.Photo);
         Assert.NotEmpty(chat.Photo.BigFileId);
@@ -130,7 +127,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.DeleteChatPhoto)]
     public async Task Should_Delete_Chat_Photo()
     {
-        await BotClient.DeleteChatPhotoAsync(classFixture.Chat.Id);
+        await BotClient.DeleteChatPhoto(classFixture.Chat.Id);
     }
 
     [OrderedFact("Should throw exception in deleting chat photo with no photo currently set")]
@@ -138,7 +135,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
     public async Task Should_Throw_On_Deleting_Chat_Deleted_Photo()
     {
         ApiRequestException e = await Assert.ThrowsAsync<ApiRequestException>(
-            async () => await BotClient.DeleteChatPhotoAsync(classFixture.Chat.Id)
+            async () => await BotClient.DeleteChatPhoto(classFixture.Chat.Id)
         );
 
         Assert.IsType<ApiRequestException>(e);
@@ -156,7 +153,7 @@ public class ChannelAdminBotTests(TestsFixture testsFixture, ChannelAdminBotTest
         const string setName = "EvilMinds";
 
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(async () =>
-            await testsFixture.BotClient.SetChatStickerSetAsync(classFixture.Chat.Id, setName)
+            await Fixture.BotClient.SetChatStickerSet(classFixture.Chat.Id, setName)
         );
 
         Assert.Equal(400, exception.ErrorCode);

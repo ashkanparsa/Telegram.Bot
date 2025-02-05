@@ -11,17 +11,15 @@ namespace Telegram.Bot.Tests.Integ.Polls;
 [Collection(Constants.TestCollections.NativePolls)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class AnonymousPollTests(AnonymousPollTestsFixture classFixture) : IClassFixture<AnonymousPollTestsFixture>
+public class AnonymousPollTests(AnonymousPollTestsFixture classFixture)
+    : TestClass(classFixture.TestsFixture), IClassFixture<AnonymousPollTestsFixture>
 {
-    TestsFixture Fixture => classFixture.TestsFixture;
-    ITelegramBotClient BotClient => Fixture.BotClient;
-
     [OrderedFact(
         "Should send a poll")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendPoll)]
     public async Task Should_Send_Poll()
     {
-        Message message = await BotClient.SendPollAsync(
+        Message message = await BotClient.SendPoll(
             chatId: Fixture.SupergroupChat,
             question: "Who shot first?",
             options: ["Han Solo", "Greedo", "I don't care"]
@@ -68,9 +66,9 @@ public class AnonymousPollTests(AnonymousPollTestsFixture classFixture) : IClass
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.StopPoll)]
     public async Task Should_Stop_Poll()
     {
-        Poll poll = await BotClient.StopPollAsync(
+        Poll poll = await BotClient.StopPoll(
             chatId: classFixture.PollMessage.Chat,
-            messageId: classFixture.PollMessage.MessageId
+            messageId: classFixture.PollMessage.Id
         );
 
         Assert.Equal(classFixture.PollMessage.Poll!.Id, poll.Id);
@@ -82,7 +80,7 @@ public class AnonymousPollTests(AnonymousPollTestsFixture classFixture) : IClass
     public async Task Should_Throw_Exception_Not_Enough_Options()
     {
         ApiRequestException exception = await Assert.ThrowsAsync<ApiRequestException>(() =>
-            BotClient.SendPollAsync(
+            BotClient.SendPoll(
                 chatId: Fixture.SupergroupChat,
                 question: "You should never see this poll",
                 options: ["The only poll option"]

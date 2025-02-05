@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Tests.Integ.Framework;
 using Telegram.Bot.Tests.Integ.Framework.Fixtures;
 using Telegram.Bot.Types;
@@ -37,7 +36,7 @@ public class GamesFixture : AsyncLifetimeFixture
             {
                 try
                 {
-                    await fixture.BotClient.SendGameAsync(fixture.SupergroupChat.Id, GameShortName);
+                    await fixture.BotClient.SendGame(fixture.SupergroupChat.Id, GameShortName);
                 }
                 catch (ApiRequestException e)
                 {
@@ -54,7 +53,7 @@ public class GamesFixture : AsyncLifetimeFixture
 
     static async Task<User> GetPlayerIdFromChatAdmins(TestsFixture testsFixture, long chatId)
     {
-        ChatMember[] admins = await testsFixture.BotClient.GetChatAdministratorsAsync(chatId);
+        ChatMember[] admins = await testsFixture.BotClient.GetChatAdministrators(chatId);
         ChatMember player = admins[new Random(DateTime.Now.Millisecond).Next(admins.Length)];
         return player.User;
     }

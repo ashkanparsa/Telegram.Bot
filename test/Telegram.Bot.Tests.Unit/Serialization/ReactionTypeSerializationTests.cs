@@ -1,7 +1,6 @@
-﻿using Telegram.Bot.Types;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Xunit;
-using JsonSerializerOptionsProvider = Telegram.Bot.Serialization.JsonSerializerOptionsProvider;
 
 namespace Telegram.Bot.Tests.Unit.Serialization;
 
@@ -18,7 +17,7 @@ public class ReactionTypeSerializationTests
         }
         """;
 
-        ReactionType? reactionType = JsonSerializer.Deserialize<ReactionType>(json, JsonSerializerOptionsProvider.Options);
+        ReactionType? reactionType = JsonSerializer.Deserialize<ReactionType>(json, JsonBotAPI.Options);
 
         ReactionTypeEmoji reactionTypeEmoji = Assert.IsAssignableFrom<ReactionTypeEmoji>(reactionType);
 
@@ -37,7 +36,7 @@ public class ReactionTypeSerializationTests
         }
         """;
 
-        ReactionType? reactionType = JsonSerializer.Deserialize<ReactionType>(json, JsonSerializerOptionsProvider.Options);
+        ReactionType? reactionType = JsonSerializer.Deserialize<ReactionType>(json, JsonBotAPI.Options);
 
         ReactionTypeCustomEmoji reactionTypeCustomEmoji = Assert.IsAssignableFrom<ReactionTypeCustomEmoji>(reactionType);
 
@@ -48,12 +47,12 @@ public class ReactionTypeSerializationTests
     [Fact]
     public void Should_Serialize_ReactionTypeEmoji()
     {
-        ReactionTypeEmoji reactionType = new()
+        ReactionType reactionType = new ReactionTypeEmoji()
         {
             Emoji = "😎"
         };
 
-        string json = JsonSerializer.Serialize(reactionType, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(reactionType, JsonBotAPI.Options);
 
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
@@ -67,12 +66,12 @@ public class ReactionTypeSerializationTests
     [Fact]
     public void Should_Serialize_ReactionTypeCustomEmoji()
     {
-        ReactionTypeCustomEmoji reactionType = new()
+        ReactionType reactionType = new ReactionTypeCustomEmoji()
         {
             CustomEmojiId = "custom-emoji-id"
         };
 
-        string json = JsonSerializer.Serialize(reactionType, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(reactionType, JsonBotAPI.Options);
 
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
@@ -84,14 +83,14 @@ public class ReactionTypeSerializationTests
     }
 
     [Fact]
-    public void Should_Serialize_ReactionTypeCustomEmoji_From_Base_Type()
+    public void Should_Serialize_ReactionTypeCustomEmoji_From_Concrete_Type()
     {
-        ReactionType reactionType = new ReactionTypeCustomEmoji()
+        ReactionTypeCustomEmoji reactionType = new()
         {
-            CustomEmojiId = "custom-emoji-id"
+            CustomEmojiId = "9999999999"
         };
 
-        string json = JsonSerializer.Serialize(reactionType, JsonSerializerOptionsProvider.Options);
+        string json = JsonSerializer.Serialize(reactionType, JsonBotAPI.Options);
 
         JsonNode? root = JsonNode.Parse(json);
         Assert.NotNull(root);
@@ -99,6 +98,6 @@ public class ReactionTypeSerializationTests
         JsonObject j = Assert.IsAssignableFrom<JsonObject>(root);
         Assert.Equal(2, j.Count);
         Assert.Equal("custom_emoji", (string?)j["type"]);
-        Assert.Equal("custom-emoji-id", (string?)j["custom_emoji_id"]);
+        Assert.Equal("9999999999", (string?)j["custom_emoji_id"]);
     }
 }

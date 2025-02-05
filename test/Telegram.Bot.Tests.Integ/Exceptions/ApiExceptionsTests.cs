@@ -8,17 +8,15 @@ namespace Telegram.Bot.Tests.Integ.Exceptions;
 [Collection(Constants.TestCollections.Exceptions)]
 [Trait(Constants.CategoryTraitName, Constants.InteractiveCategoryValue)]
 [TestCaseOrderer(Constants.TestCaseOrderer, Constants.AssemblyName)]
-public class ApiExceptionsTests(TestsFixture fixture)
+public class ApiExceptionsTests(TestsFixture fixture) : TestClass(fixture)
 {
-    ITelegramBotClient BotClient => fixture.BotClient;
-
     [OrderedFact("Should throw ChatNotFoundException while trying to send message to a user who hasn't " +
                  "started a chat with bot but bot knows about him/her.")]
     [Trait(Constants.MethodTraitName, Constants.TelegramBotApiMethods.SendMessage)]
     public async Task Should_Throw_Exception_ChatNotFoundException()
     {
         //ToDo add exception. forward message from another bot. Forbidden: bot can't send messages to bots
-        await fixture.SendTestInstructionsAsync(
+        await Fixture.SendTestInstructionsAsync(
             "Forward a message to this chat from a user that never started a chat with this bot"
         );
 
@@ -32,7 +30,7 @@ public class ApiExceptionsTests(TestsFixture fixture)
         //MessageOriginHiddenUser hiddenUser = (MessageOriginHiddenUser)forwardedMessageUpdate.Message!.ForwardOrigin;
 
         ApiRequestException e = await Assert.ThrowsAsync<ApiRequestException>(async () =>
-            await BotClient.SendTextMessageAsync(
+            await BotClient.SendMessage(
                 int.MaxValue,
                 $"Error!"
             )
